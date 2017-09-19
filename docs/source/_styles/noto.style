@@ -1,0 +1,16 @@
+fontAlias:
+    stdBold: Noto Sans-CJK-KR-Bold
+    stdBoldItalic: Noto Sans-CJK-KR-BoldOblique
+    stdFont: Noto Sans CJK KR Regular
+    stdItalic: Noto Sans-CJK-KR-Oblique
+    stdMono: Noto Sans-CJK-KR Mono
+    stdMonoBold: Noto Sans-CJK-KR Mono-Bold
+    stdMonoBoldItalic: Noto Sans-CJK-KR Mono-BoldOblique
+    stdMonoItalic: Noto Sans-CJK-KR Mono-Oblique
+    stdSans: Noto Sans-CJK-KR
+    stdSansBold: Noto Sans-CJK-KR-Bold
+    stdSansBoldItalic: Noto Sans-CJK-KR-BoldOblique
+    stdSansItalic: Noto Sans-CJK-KR-Oblique
+    stdSerif: Noto Serif
+
+styles: base: kerning: true

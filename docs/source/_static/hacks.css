@@ -1,0 +1,84 @@
+/*
+ * CSS hacks and small modification for my Sphinx website
+ * :copyright: Copyright 2013-2016 Lilian Besson
+ * :license: GPLv3, see LICENSE for details.
+ */
+/* Colors and text decoration.
+ For example, :black:`text in black` or :blink:`text blinking` in rST. */
+.black    { color:black; }
+.gray     { color:gray; }
+.grey     { color:gray; }
+.silver   { color:silver; }
+.white    { color:white; }
+.maroon   { color:maroon; }
+.red      { color:red; }
+.magenta  { color:magenta; }
+.fuchsia  { color:fuchsia; }
+.pink     { color:pink; }
+.orange   { color:orange; }
+.yellow   { color:yellow; }
+.lime     { color:lime; }
+.green, .blink-green    { color:green; }
+.olive    { color:olive; }
+.teal     { color:teal; }
+.cyan     { color:cyan; }
+.aqua     { color:aqua; }
+.blue     { color:blue; }
+.navy     { color:navy; }
+.purple   { color:purple; }
+.under    { text-decoration: underline; }
+.over     { text-decoration: overline; }
+.line     { text-decoration: line-through; }
+.strike   { text-decoration: line-through; }
+.it       { font-style: italic; }
+.ob       { font-style: oblique; }
+.small    { font-size: small; }
+.large    { font-size: large; }
+.smallpar { font-size: small; }
+
+/* @group Blink */
+.blink, .blink-green {
+	-webkit-animation: blink .75s linear infinite;
+	-moz-animation: blink .75s linear infinite;
+	-ms-animation: blink .75s linear infinite;
+	-o-animation: blink .75s linear infinite;
+	 animation: blink .75s linear infinite;
+}
+@-webkit-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-moz-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-ms-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@-o-keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+@keyframes blink {
+	0% { opacity: 1; }
+	50% { opacity: 1; }
+	50.01% { opacity: 0; }
+	100% { opacity: 0; }
+}
+
+@font-face {
+  font-family: NotoSansCJKjp-Regular;
+  src: url('_static/fonts/NotoSansCJKjp-Regular.ttf');
+
+.kr {
+  font-family: NotoSansCJKjp-Regular;
+}

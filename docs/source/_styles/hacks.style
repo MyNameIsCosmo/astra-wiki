@@ -1,0 +1,6 @@
+fontAlias:
+    stdFontKr: "NotoSansCJKjp-Regular.ttf"
+
+styles:
+    kr:
+        fontName: "NotoSansCJKjp-Regular.ttf"

@@ -1,0 +1,27 @@
+# Sphinx Build Files #
+######################
+build/
+_build/
+_build_html/
+_build_pdf/
+
+# Temporary Files #
+###################
+*.swp
+*.swo
+*.bak
+*.pyo
+*.pyc
+*~
+*#
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
