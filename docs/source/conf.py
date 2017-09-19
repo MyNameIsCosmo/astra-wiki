@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# dabit-template documentation build configuration file, created by
+# orbbec-astra-wiki documentation build configuration file, created by
 # sphinx-quickstart on Mon Jul 10 19:43:17 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -58,7 +58,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'dabit-template'
+project = u'Orbbec Astra Wiki'
 copyright = u'2017, Dabit Industries'
 author = u'Dabit Industries'
 
@@ -115,7 +115,7 @@ html_theme_path = ['_themes']
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
 #
-html_logo = '_static/logo_dabit.png'
+html_logo = '_static/Product_AstraPro_Header-1024x243.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -141,7 +141,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'dabit-templatedoc'
+htmlhelp_basename = 'orbbec-astra-wikidoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -168,7 +168,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'dabit-template.tex', u'dabit-template Documentation',
+    (master_doc, 'orbbec-astra-wiki.tex', u'orbbec-astra-wiki Documentation',
      u'Dabit Industries', 'manual'),
 ]
 
@@ -178,7 +178,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'dabit-template', u'dabit-template Documentation',
+    (master_doc, 'orbbec-astra-wiki', u'orbbec-astra-wiki Documentation',
      [author], 1)
 ]
 
@@ -189,8 +189,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'dabit-template', u'dabit-template Documentation',
-     author, 'dabit-template', 'One line description of project.',
+    (master_doc, 'orbbec-astra-wiki', u'orbbec-astra-wiki Documentation',
+     author, 'orbbec-astra-wiki', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -210,7 +210,7 @@ texinfo_documents = [
 # would mean that specific document would be compressed
 # regardless of the global pdf_compressed setting.
 pdf_documents = [
-        ('contents', u'dabit-template', u'dabit-template', u'Dabit Industries')
+        ('contents', u'orbbec-astra-wiki', u'', u'Dabit Industries')
 ]
 
 # A list of folders to search for stylesheets. Example:

@@ -1,7 +1,7 @@
-.. image:: _static/logo_dabit.png
+.. image:: _static/Product_AstraPro_Header-1024x243.png
 
-Welcome to dabit sphinx template!
-=================================
+Welcome to Orbbec Astra Wiki
+============================
 
 .. include:: contents.rst
 

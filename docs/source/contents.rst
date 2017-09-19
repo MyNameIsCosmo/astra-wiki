@@ -3,6 +3,8 @@
    :caption: Contents:
 
    about
+   downloadDriver
+   installation
    changelog
    license
    faq
