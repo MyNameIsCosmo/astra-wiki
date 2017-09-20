@@ -18,16 +18,16 @@ Adapted from the Readme file provided by Orbbec.
 Let's choose 64bit (x64) and install the driver using an example as follows:
 
 
-- To run visual samples(e.g., SimpleViewer), you will need freeglut3 header and libaries, please install
+- To run visual samples(e.g., SimpleViewer), you will need ``freeglut3 header and libaries``, please install
 
 ::
 
     $ sudo apt-get install build-essential freeglut3 freeglut3-dev
 
 
-Check the udev version, Orbbec Driver needs libudev.so.1
+Check the udev version, Orbbec Driver needs ``libudev.so.1``
 
-If you can't find it then make a symbolic link from libudev.so.x.x, which is usually located at /lib/x86_64-linux-gnu or /lib/i386-linux-gnu
+If you can't find it then make a symbolic link from ``libudev.so.x.x``, which is usually located at ``/lib/x86_64-linux-gnu`` or ``/lib/i386-linux-gnu``
 
 .. NOTE::
   Type the following commands, only if you could not find the right udev version.
@@ -45,7 +45,7 @@ Next, let's install the OpenNI 2 driver.
 ::
 
     $ unzip OpenNI-Linux-x64-2.3.zip
-    $ cd OpenNI-Linux-x64-2.2
+    $ cd OpenNI-Linux-x64-2.3
 
 
 - Run ``install.sh`` to generate OpenNIDevEnvironment, which contains OpenNI development environment 
