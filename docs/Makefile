@@ -2,7 +2,7 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    = -v
+SPHINXOPTS    = 
 SPHINXBUILD   = python -msphinx
 SPHINXPROJ    = dabit-template
 SOURCEDIR     = source
@@ -10,7 +10,9 @@ BUILDDIR      = build
 
 # Put it first so that "make" without argument is like "make help".
 help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)\
+        || echo "Install Requirements: sudo pip install -r requirements.txt"
+        @echo "Build documentation: make html"
 
 .PHONY: help Makefile
 
