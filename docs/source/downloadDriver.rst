@@ -15,16 +15,8 @@ System Requirements
 - 4 gigabytes of RAM
 
 
-Windows 10
-~~~~~~~~~~
-The drivers for Windows 10 can be downloaded from here: 
-`Download driver for Win 10 <https://www.dropbox.com/sh/75hmuxvexu2acv5/AABrMDtfDoW9m05VdM-Pih-Ra/Windows%2010?dl=0>`_
-
-
-Windows 7 & 8
-~~~~~~~~~~~~~
-The drivers for Windows 7 & 8 can be downloaded from here: 
-`Download driver for Win 7 and 8 <https://www.dropbox.com/sh/75hmuxvexu2acv5/AADZhSMKSRWb52Pzr0TLJhfha/Windows%207%20%26%208?dl=0>`_
+The Astra driver and OpenNI 2 for Windows 7,8 and 10 can be downloaded from here: 
+`Download driver for Win <http://www.orbbec3d.net/Tools_SDK_OpenNI/3-Windows.zip>`_
 
 
 Linux
@@ -39,3 +31,8 @@ System Requirements
 
 The OpenNI 2 for Linux can be downloaded from here: 
 `Download driver for Linux <https://www.dropbox.com/sh/ou49febb83m476d/AADqCQuI3agPOdhyuihl0NHMa?dl=0>`_
+
+
+**For more download options**
+
+Visit the `developer <https://orbbec3d.com/develop/>`_ site of Orbbec.

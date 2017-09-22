@@ -3,6 +3,43 @@
 Installation
 ============
 
+Windows
+*******
+Installation procedure on Windows is straight-forward using an installer.
+
+- Connect the Orbbec Astra camera to one of the USB ports
+- Look for the new hardware notification in Device Manager under ``Other devices``
+
+.. image:: _static/noDriverOrbbecDM.JPG
+
+- A look at the contents of the driver
+
+.. image:: _static/contentsOfDriver.JPG
+
+- Open the `Sensor Driver` folder and look for `SensorDriver_V4.3.0.4.exe`
+
+.. image:: _static/runSensorDriver.JPG
+
+- Double click the .exe and wait for the installer to begin and then click on the `Install` option
+
+.. image:: _static/setup1.JPG
+
+.. image:: _static/setup2.JPG
+
+- Click `Next`
+
+.. image:: _static/setup3.JPG
+
+.. image:: _static/setup4.JPG
+
+- Click on `Finish` and the installation is complete
+
+Now, the driver must be visible in `Device Manager`
+
+.. image:: _static/driverInstalled.JPG
+
+
+
 Linux
 *****
 
