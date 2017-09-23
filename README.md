@@ -11,4 +11,4 @@
 ![](docs/source/_static/depthMap.gif)
 
 
-Most of the content in this documentation is obtained from the `official website <https://orbbec3d.com/>`_ of Orbbec Astra.
+Most of the content in this documentation is obtained from the [official website](https://orbbec3d.com/) of Orbbec Astra.
