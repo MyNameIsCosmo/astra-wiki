@@ -100,6 +100,9 @@ Next, let's install the OpenNI 2 driver.
 
     $ source OpenNIDevEnvironment
 
+Example 1: SimpleViewer
+~~~~~~~~~~~~~~~~~~~~~~~
+
 - Build sample(e.g., SimpleViewer)
 
 ::
@@ -118,6 +121,27 @@ Next, let's install the OpenNI 2 driver.
 
 
 .. image:: _static/test.png
+
+
+Example 2: ClosestPointViewer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Build sample
+::
+
+    $ cd Samples/ClosestPointViewer
+    $ make
+
+- Run the sample
+::
+
+    $ cd Bin/x64-Release
+    $ ./ClosestPointViewer
+
+The gif shows the closest point (marked by red and blue points).
+
+.. image:: _static/closestPointViewer.gif
+
 
 .. NOTE::
   - If the Debian Jessie Lite is used for testing, it may require the following installation for properly start the viewer.
