@@ -2,6 +2,8 @@
 
 Welcome to Orbbec Astra Wiki
 ============================
+A quick-start guide to download the appropriate drivers for Orbbec Astra camera.
+Instructions to install on Windows and Linux are provided.
 
 .. include:: contents.rst
 
