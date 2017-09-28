@@ -233,4 +233,7 @@ Now create a new Python file and put the following code in it:
 		openni2.unload()
 		cv2.destroyAllWindows()
 
+- Run the example code and click + drag on the screen to make a "selection" box. The 2d image coordinates of the selected box are printed to the terminal.
+
+.. image:: _static/examples_opencv.jpg
 
