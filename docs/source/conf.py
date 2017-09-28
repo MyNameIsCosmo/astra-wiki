@@ -42,7 +42,7 @@ extensions = [
         #'sphinx_git',
         #'sphinxcontrid.inlinesyntaxhighlight', #pip install sphinxcontrib-inlinesyntaxhighlight
         #'sphinx_tabs.tabs', #https://github.com/djungelorm/sphinx-tabs
-#        'rst2pdf.pdfbuilder'
+        'rst2pdf.pdfbuilder'
         ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -214,7 +214,7 @@ pdf_documents = [
 ]
 
 # A list of folders to search for stylesheets. Example:
-pdf_style_path = ['.', 'source/_styles']
+pdf_style_path = ['.']#, 'source/_styles']
 
 # A comma-separated list of custom stylesheets. Example:
 pdf_stylesheets = ['sphinx', 'a4', 'hacks']
@@ -238,7 +238,7 @@ pdf_fit_mode = "shrink"
 # Section level that forces a break page.
 # For example: 1 means top-level sections start in a new page
 # 0 means disabled
-pdf_break_level = 2
+pdf_break_level = 1
 
 # When a section starts in a new page, force it to be 'even', 'odd',
 # or just use 'any'
