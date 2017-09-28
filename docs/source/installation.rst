@@ -130,12 +130,14 @@ Example 2: ClosestPointViewer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Build sample
+
 ::
 
     $ cd Samples/ClosestPointViewer
     $ make
 
 - Run the sample
+
 ::
 
     $ cd Bin/x64-Release
@@ -157,7 +159,7 @@ Example 3: Depth Stream using Python and OpenCV
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 You can view depth data in Python from the Orbbec Astra using the OpenNI, OpenCV, and Numpy libraries.
 OpenNI is used to communicate with the camera.
-Numpy is used to manipulate the data to be displayed in a 2d window
+Numpy is used to manipulate the data to be displayed in a 2D window
 OpenCV is used to display the manipulated depth data.
 
 To start, you should source the Orbbec build environment from earlier:
@@ -233,7 +235,7 @@ Now create a new Python file and put the following code in it:
 		openni2.unload()
 		cv2.destroyAllWindows()
 
-- Run the example code and click + drag on the screen to make a "selection" box. The 2d image coordinates of the selected box are printed to the terminal.
+- Run the example code and click + drag on the screen to make a "selection" box. The 2D image coordinates of the selected box are printed to the terminal.
 
 .. image:: _static/examples_opencv.jpg
 
