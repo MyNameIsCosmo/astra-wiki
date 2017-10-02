@@ -39,6 +39,7 @@ def point_and_shoot(event, x, y, flags, param):
         print "Max of ROI: ", roi.max()
         print "Min of ROI: ", roi.min()
         print "Standard Deviation of ROI: ", np.std(roi)
+        print "Length of ROI: ", len(roi)
 
 
 #def stats():
