@@ -29,7 +29,19 @@ def point_and_shoot(event, x, y, flags, param):
         refPt.append((x,y))
         selecting = False
         print refPt
+        # noting the other two vertices of the rectangle and printing
+        refPt.append((refPt[1][0], refPt[0][1]))
+        refPt.append((refPt[0][0], refPt[1][1]))
+        print "The co-ordinates of ROI: ", refPt
+        roi = img[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0], 1]
+        #print roi.shape 
+        print "Mean of ROI: ", roi.mean()
+        print "Max of ROI: ", roi.max()
+        print "Min of ROI: ", roi.min()
+        print "Standard Deviation of ROI: ", np.std(roi)
 
+
+#def stats():
 # Initial OpenCV Window Functions
 cv2.namedWindow("Depth Image")
 cv2.setMouseCallback("Depth Image", point_and_shoot)
@@ -49,7 +61,7 @@ while True:
     if len(refPt) > 1:
         img = img.copy()
         cv2.rectangle(img, refPt[0], refPt[1], (0, 255, 0), 2)
-
+        
     # Display the reshaped depth frame using OpenCV
     cv2.imshow("Depth Image", img)
     key = cv2.waitKey(1) & 0xFF
