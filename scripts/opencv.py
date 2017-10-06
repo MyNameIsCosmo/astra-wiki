@@ -24,6 +24,10 @@ selecting = False
 
 def point_and_shoot(event, x, y, flags, param):
     global refPt, selecting
+    if x > 640:
+        x = x - 640
+    if y > 480:
+        y = y - 480
     if event == cv2.EVENT_LBUTTONDOWN:
         print "Mouse Down"
         refPt = [(x,y)]
@@ -38,7 +42,8 @@ def point_and_shoot(event, x, y, flags, param):
         refPt.append((refPt[1][0], refPt[0][1]))
         refPt.append((refPt[0][0], refPt[1][1]))
         print "The co-ordinates of ROI: ", refPt
-        roi = color_img[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0], 1]
+        roi = depth_img[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0], 1]
+        print "Points of ROI: ", roi
         #print roi.shape 
         print "Mean of ROI: ", roi.mean()
         print "Max of ROI: ", roi.max()
