@@ -246,8 +246,8 @@ Prequisites
 -----------
 
 Libaries Used:
-- `OpenNI2 <https://structure.io/openni>`_
-- `PCL 1.8 <http://pointclouds.org/documentation/tutorials/compiling_pcl_posix.php>`_
+    - `OpenNI2 <https://structure.io/openni>`_
+    - `PCL 1.8 <http://pointclouds.org/documentation/tutorials/compiling_pcl_posix.php>`_
 
 .. NOTE::
     PCL 1.8 is not available in the Ubuntu Xenial (16.04) repositories
@@ -261,27 +261,39 @@ Code Example Overview
 ---------------------
 
 - *openni_read.cpp*
-  - Using the OpenNI2 library, open an depth camera stream and return the number of points
+    - Using the OpenNI2 library, open an depth camera stream and return the number of points
 
 - *pcd_write.cpp*
-  - Using the PCL library, test writing a random point cloud to a file
+    - Using the PCL library, test writing a random point cloud to a file
 
 - *pcl_openni_viewer.cpp*
-  - Using the PCL and OpenNI library, open and stream a depth device
+    - Using the PCL and OpenNI library, open and stream a depth device
 
   .. NOTE::
-    This example does not work with the Orbbec Astra as you need OpenNI2
+    The *pcl_openni_viewer.cpp* example does not work with the Orbbec Astra as you need OpenNI2
 
 - *pcl_openni2_viewer.cpp*
-  - Using the PCL and OpenNI2 library, open and stream a depth device
+    - Using the PCL and OpenNI2 library, open and stream a depth device
 
 - *pcl_visualizer.cpp*
-  - Using the PCL library, test generating and viewing point clouds
+    - Using the PCL library, test generating and viewing point clouds
+
+Setting up OpenNI2
+------------------
+
+.. NOTE:: The way structure.io has their package setup, you cannot easily install it into your system. Therefore, you need to point to the directory you extracted OpenNI2 every time you want to use the code...
+
+Reference the OpenNI2 setup earlier in this document.
+  
 
 Installing PCL
 --------------
 
-.. NOTE:: You can use a `pre-built .deb <https://www.dropbox.com/s/9llzm20pc4opdn9/PCL-1.8.0-Linux.deb?dl=0>` for installing on Ubuntu Xenial (16.04) from the following link: https://larrylisky.com/2016/11/03/point-cloud-library-on-ubuntu-16-04-lts/
+.. NOTE:: You can use a `pre-built .deb <https://www.dropbox.com/s/9llzm20pc4opdn9/PCL-1.8.0-Linux.deb?dl=0>`_ for installing on Ubuntu Xenial (16.04) from the following link: https://larrylisky.com/2016/11/03/point-cloud-library-on-ubuntu-16-04-lts/
+
+.. WARNING::
+    If you go with the pre-built .deb, you will need to edit the CMAKE file in /usr/share/PCL-1.8. (TODO: see below)
+    Also, with the pre-built .deb, you do not have openni2 PCL compatibility. :( 
 
 Install Prequisites:
 ::
@@ -301,6 +313,11 @@ Install Prequisites:
 	sudo apt-get install mono-complete
 	sudo apt-get install qt-sdk openjdk-8-jdk openjdk-8-jre
 
+Source OpenNI2 libraries:
+::
+
+  source ~/OpenNi/OpenNi-Linux-x64-2.3/OpenNIDevEnvironment
+
 Download and build PCL:
 ::
 
@@ -310,24 +327,29 @@ Download and build PCL:
   cd pcl
 	mkdir build
 	cd build
-	cmake -DCMAKE_BUILD_TYPE=None -DBUILD_GPU=ON -DBUILD_apps=ON -DBUILD_examples=ON .. 
-	make
+  cmake -DCMAKE_BUILD_TYPE=None -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_GPU=ON -DBUILD_apps=ON -DBUILD_examples=ON \
+        -DCMAKE_INSTALL_PREFIX=/usr ..
+	make -j4
 
 Building C++ Code
 -----------------
 
 ::
 
+  source ~/OpenNi/OpenNi-Linux-x64-2.3/OpenNIDevEnvironment
+  cd /path/to/your/code/src
   mkdir build
   cd build
   cmake ..
-  make
+  make -j4
 
 Running C++ Examples
 --------------------
 
 ::
 
+  source ~/OpenNi/OpenNi-Linux-x64-2.3/OpenNIDevEnvironment
   ./pcd_write_test
   ./openni_read
   ./visualizer -h
