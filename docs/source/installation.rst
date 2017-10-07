@@ -49,7 +49,7 @@ Adapted from the Readme file provided by Orbbec.
   - For user with ARM based development board:
   - With CPU Structure older than Cortex A17, use OpenNI-Linux-Arm-2.3 Nofilter.tar for better performance.
 
-'Download the OpenNI2 Zip Package from Orbbec <http://www.orbbec3d.net/Tools_SDK_OpenNI/2-Linux.zip>'_
+`Download the OpenNI2 Zip Package from Orbbec <http://www.orbbec3d.net/Tools_SDK_OpenNI/2-Linux.zip>`_
 - There are two zip files, one is for a 32bit machine and the other for a 64bit machine.
 
 Let's choose 64bit (x64) and install the driver using an example as follows:
@@ -242,13 +242,95 @@ Now create a new Python file and put the following code in it:
 Example 4: Depth Stream using C++
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Prequisites
+-----------
+
+Libaries Used:
+- `OpenNI2 <https://structure.io/openni>`_
+- `PCL 1.8 <http://pointclouds.org/documentation/tutorials/compiling_pcl_posix.php>`_
+
+.. NOTE::
+    PCL 1.8 is not available in the Ubuntu Xenial (16.04) repositories
+    PCL 1.7 does not have the required OpenNI2 libraries to run the Orbbec Astra with
+    PCL 1.7 also has visualization issues due to VTK bugs, which were fixed in 1.8
+
+.. WARNING::
+    This was only tested in Ubuntu 16.04 with PCL 1.8.1rc2 compiled from source and OpenNI2 provided from Structure.io
+
+Code Example Overview
+---------------------
+
+- *openni_read.cpp*
+  - Using the OpenNI2 library, open an depth camera stream and return the number of points
+
+- *pcd_write.cpp*
+  - Using the PCL library, test writing a random point cloud to a file
+
+- *pcl_openni_viewer.cpp*
+  - Using the PCL and OpenNI library, open and stream a depth device
+
+  .. NOTE::
+    This example does not work with the Orbbec Astra as you need OpenNI2
+
+- *pcl_openni2_viewer.cpp*
+  - Using the PCL and OpenNI2 library, open and stream a depth device
+
+- *pcl_visualizer.cpp*
+  - Using the PCL library, test generating and viewing point clouds
+
+Installing PCL
+--------------
+
+.. NOTE:: You can use a `pre-built .deb <https://www.dropbox.com/s/9llzm20pc4opdn9/PCL-1.8.0-Linux.deb?dl=0>` for installing on Ubuntu Xenial (16.04) from the following link: https://larrylisky.com/2016/11/03/point-cloud-library-on-ubuntu-16-04-lts/
+
+Install Prequisites:
+::
+
+	sudo apt-get update
+	sudo apt-get install git build-essential linux-libc-dev
+	sudo apt-get install cmake cmake-gui 
+	sudo apt-get install libusb-1.0-0-dev libusb-dev libudev-dev
+	sudo apt-get install mpi-default-dev openmpi-bin openmpi-common  
+	sudo apt-get install libflann1.8 libflann-dev
+	sudo apt-get install libeigen3-dev
+	sudo apt-get install libboost-all-dev
+	sudo apt-get install libvtk5.10-qt4 libvtk5.10 libvtk5-dev
+	sudo apt-get install libqhull* libgtest-dev
+	sudo apt-get install freeglut3-dev pkg-config
+	sudo apt-get install libxmu-dev libxi-dev 
+	sudo apt-get install mono-complete
+	sudo apt-get install qt-sdk openjdk-8-jdk openjdk-8-jre
+
+Download and build PCL:
+::
+
+  mkdir ~/tmp
+  cd ~/tmp
+  git clone https://github.com/PointCloudLibrary/pcl -b pcl-1.8.1rc2
+  cd pcl
+	mkdir build
+	cd build
+	cmake -DCMAKE_BUILD_TYPE=None -DBUILD_GPU=ON -DBUILD_apps=ON -DBUILD_examples=ON .. 
+	make
+
+Building C++ Code
+-----------------
+
 ::
 
   mkdir build
   cd build
   cmake ..
   make
+
+Running C++ Examples
+--------------------
+
+::
+
   ./pcd_write_test
-  ./viewer --help
-  ./viewer -l
-  ./viewer
+  ./openni_read
+  ./visualizer -h
+  ./openni_viewer --help
+  ./openni_viewer -l
+  ./openni_viewer

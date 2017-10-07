@@ -5,8 +5,4 @@
    about
    downloadDriver
    installation
-   changelog
-   license
-   faq
-   contact
 
