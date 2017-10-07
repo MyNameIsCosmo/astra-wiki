@@ -239,3 +239,16 @@ Now create a new Python file and put the following code in it:
 
 .. image:: _static/examples_opencv.jpg
 
+Example 4: Depth Stream using C++
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+  mkdir build
+  cd build
+  cmake ..
+  make
+  ./pcd_write_test
+  ./viewer --help
+  ./viewer -l
+  ./viewer
