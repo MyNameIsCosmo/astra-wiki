@@ -21,9 +21,13 @@ color_stream.set_video_mode(c_api.OniVideoMode(pixelFormat = c_api.OniPixelForma
 # Function to return some pixel information when the OpenCV window is clicked
 refPt = []
 selecting = False
+mousex = 0
+mousey = 0
 
 def point_and_shoot(event, x, y, flags, param):
-    global refPt, selecting
+    global refPt, selecting, mousex, mousey
+    mousex = x
+    mousey = y
     if x > 640:
         x = x - 640
     if y > 480:
@@ -41,16 +45,6 @@ def point_and_shoot(event, x, y, flags, param):
         # noting the other two vertices of the rectangle and printing
         refPt.append((refPt[1][0], refPt[0][1]))
         refPt.append((refPt[0][0], refPt[1][1]))
-        print "The co-ordinates of ROI: ", refPt
-        roi = depth_img[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0], 1]
-        print "Points of ROI: ", roi
-        #print roi.shape 
-        print "Mean of ROI: ", roi.mean()
-        print "Max of ROI: ", roi.max()
-        print "Min of ROI: ", roi.min()
-        print "Standard Deviation of ROI: ", np.std(roi)
-        print "Length of ROI: ", len(roi)
-
 
 #def stats():
 # Initial OpenCV Window Functions
@@ -79,12 +73,31 @@ while True:
     color_img.shape = (480, 640, 3)
     color_img = color_img[...,::-1]
 
+    if selecting:
+        color_img = color_img.copy()
+        cv2.rectangle(color_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
     if len(refPt) > 1:
         color_img= color_img.copy()
         cv2.rectangle(color_img, refPt[0], refPt[1], (0, 255, 0), 2)
         depth_img= depth_img.copy()
         cv2.rectangle(depth_img, refPt[0], refPt[1], (0, 255, 0), 2)
+
+        left = min(refPt[0][0],refPt[1][0])
+        top = min(refPt[0][1],refPt[1][1])
+        right = max(refPt[0][0],refPt[1][0])
+        bottom = max(refPt[0][1],refPt[1][1])
+        roi = depth_img[left:right, top:bottom, 1]
+
+        cv2.putText(color_img,"Mean of ROI: {}".format(roi.mean()), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+        cv2.putText(color_img,"Max of ROI: {}".format(roi.max()), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+        cv2.putText(color_img,"Min of ROI: {}".format(roi.min()), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+        cv2.putText(color_img,"Standard Deviation of ROI: {}".format(np.std(roi)), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+        print "Mean of ROI: ", roi.mean()
+        print "Max of ROI: ", roi.max()
+        print "Min of ROI: ", roi.min()
+        print "Standard Deviation of ROI: ", np.std(roi)
     depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/65535.0))
+
     img = np.concatenate((color_img, depth_img), 1)
         
     # Display the reshaped depth frame using OpenCV
