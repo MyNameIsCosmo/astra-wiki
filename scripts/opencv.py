@@ -26,25 +26,20 @@ mousey = 0
 
 def point_and_shoot(event, x, y, flags, param):
     global refPt, selecting, mousex, mousey
-    mousex = x
-    mousey = y
     if x > 640:
         x = x - 640
     if y > 480:
         y = y - 480
+    mousex = x
+    mousey = y
     if event == cv2.EVENT_LBUTTONDOWN:
-        print "Mouse Down"
         refPt = [(x,y)]
         selecting = True
-        print refPt
     elif event == cv2.EVENT_LBUTTONUP:
-        print "Mouse Up"
-        refPt.append((x,y))
         selecting = False
+        if (refPt[0] != (x,y)):
+            refPt.append((x,y))
         print refPt
-        # noting the other two vertices of the rectangle and printing
-        refPt.append((refPt[1][0], refPt[0][1]))
-        refPt.append((refPt[0][0], refPt[1][1]))
 
 #def stats():
 # Initial OpenCV Window Functions
@@ -73,15 +68,14 @@ while True:
     color_img.shape = (480, 640, 3)
     color_img = color_img[...,::-1]
 
+    color_img= color_img.copy()
+    depth_img= depth_img.copy()
     if selecting:
-        color_img = color_img.copy()
         cv2.rectangle(color_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
+        cv2.rectangle(depth_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
     if len(refPt) > 1:
-        color_img= color_img.copy()
         cv2.rectangle(color_img, refPt[0], refPt[1], (0, 255, 0), 2)
-        depth_img= depth_img.copy()
         cv2.rectangle(depth_img, refPt[0], refPt[1], (0, 255, 0), 2)
-
         left = min(refPt[0][0],refPt[1][0])
         top = min(refPt[0][1],refPt[1][1])
         right = max(refPt[0][0],refPt[1][0])
@@ -96,6 +90,13 @@ while True:
         print "Max of ROI: ", roi.max()
         print "Min of ROI: ", roi.min()
         print "Standard Deviation of ROI: ", np.std(roi)
+        print "Closest point: ", 
+    elif len(refPt) == 1:
+        cv2.circle(color_img, refPt[0], 3, (0,0,255), 1)
+        cv2.circle(depth_img, refPt[0], 3, (0,0,255), 1)
+        cv2.putText(color_img,"Point X,Y: {},{}".format(refPt[0][0],refPt[0][1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+        cv2.putText(color_img,"Point distance in Meters: {}".format(float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+
     depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/65535.0))
 
     img = np.concatenate((color_img, depth_img), 1)
