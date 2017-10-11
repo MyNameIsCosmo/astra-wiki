@@ -5,4 +5,5 @@
    about
    downloadDriver
    installation
+   examples
 

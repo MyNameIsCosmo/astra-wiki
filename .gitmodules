@@ -1,3 +1,6 @@
 [submodule "resources/sphinx_rtd_theme"]
 	path = resources/sphinx_rtd_theme
 	url = git@github.com:dabit-industries/sphinx_rtd_theme
+[submodule "scripts/thirdparty/python-pcl"]
+	path = scripts/thirdparty/python-pcl
+	url = https://github.com/strawlab/python-pcl
