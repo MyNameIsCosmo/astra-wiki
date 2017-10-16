@@ -11,6 +11,9 @@ from openni import openni2
 from openni import _openni2 as c_api
 
 
+#class OpenNIDevice(openni2.Device):
+#    def __init__(
+
 # Initialize the depth device
 openni2.initialize()
 dev = openni2.Device.open_any()
@@ -42,7 +45,9 @@ sp2 = gl.GLScatterPlotItem(pos=pos)
 sp2.scale(1,1,1)
 w.addItem(sp2)
 
-def point_cloud(depth, cx=640/2, cy=480/2, fx=60, fy=49.5, scale=0.001):
+# Instrinsic calibration values guestimated.
+#  Perform OpenCV monocular camera calibration for accurate depth data
+def point_cloud(depth, cx=328, cy=241, fx=586, fy=589, scale=0.001):
     depth = depth.astype(np.float32)
     rows, cols = depth.shape
     c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
