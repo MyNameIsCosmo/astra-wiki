@@ -4,6 +4,10 @@ import numpy as np
 from openni import openni2
 from openni import _openni2 as c_api
 
+# An example using startStreams
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph.opengl as gl
+
 # Initialize the depth device
 openni2.initialize()
 dev = openni2.Device.open_any()
@@ -24,6 +28,17 @@ selecting = False
 mousex = 0
 mousey = 0
 
+# Instrinsic calibration values guestimated.
+#  Perform OpenCV monocular camera calibration for accurate depth data
+def point_cloud(depth, cx=328, cy=241, fx=586, fy=589, scale=0.0001):
+    depth = depth.astype(np.float32)
+    rows, cols = depth.shape
+    c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
+    valid = (depth > 0) & (depth < 65536.0)
+    z = np.where(valid, depth, np.nan)
+    x = np.where(valid, (z * (c - cx)) / fx, 0)
+    y = np.where(valid, (z * (r - cy)) / fy, 0)
+    return x, y, z, np.dstack((x, y, z)) * scale
 
 def point_and_shoot(event, x, y, flags, param):
     global refPt, selecting, mousex, mousey
@@ -42,6 +57,22 @@ def point_and_shoot(event, x, y, flags, param):
             refPt.append((x,y))
         print refPt
 
+#QT app
+app = QtGui.QApplication([])
+w = gl.GLViewWidget()
+w.show()
+g = gl.GLGridItem()
+
+print w.cameraPosition()
+
+w.addItem(g)
+
+#initialize some points data
+pos = np.zeros((10000,3))
+
+sp2 = gl.GLScatterPlotItem(pos=pos)
+sp2.scale(1,1,1)
+w.addItem(sp2)
 
 #def stats():
 # Initial OpenCV Window Functions
@@ -49,7 +80,9 @@ cv2.namedWindow("Depth Image")
 cv2.setMouseCallback("Depth Image", point_and_shoot)
 
 # Loop
-while True:
+def update():
+    
+    colors = ((1.0, 1.0, 1.0, 1.0))
     # Grab a new depth frame
     depth_frame = depth_stream.read_frame()
     depth_frame_data = depth_frame.get_buffer_as_uint16()
@@ -121,8 +154,33 @@ while True:
 
     img = np.concatenate((color_img, depth_img), 1)
 
+
+    x, y, z, cloud = point_cloud(depth_image)
+
+    x = cloud[:,:,0].flatten()
+    y = cloud[:,:,1].flatten()
+    z = cloud[:,:,2].flatten()
+
+    N = max(x.shape)
+    pos = np.empty((N,3))
+    pos[:, 0] = x
+    pos[:, 1] = z
+    pos[:, 2] = y
+
+    #size = np.empty((pos.shape[0]))
+    #color = np.empty((pos.shape[0], 4))
+
+    #for i in range(pos.shape[0]):
+    #    size[i] = 0.1
+    #    color[i] = (1,0,0,1)
+
+    #d = np.ndarray((depth_frame.height, depth_frame.width),dtype=np.uint16,buffer=points)#/10000
+    out = pos
+
     # Display the reshaped depth frame using OpenCV
     cv2.imshow("Depth Image", img)
+
+    sp2.setData(pos=out, size=2, color=colors, pxMode=True)
 
     key = cv2.waitKey(1) & 0xFF
     if (key == 27 or key == ord('q') or key == ord('x') or key == ord("c")):
@@ -132,6 +190,16 @@ while True:
         cv2.destroyAllWindows()
         sys.exit(0)
 
+t = QtCore.QTimer()
+t.timeout.connect(update)
+t.start(100)
+
+
+## Start Qt event loop unless running in interactive mode.
+if __name__ == '__main__':
+    import sys
+    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+        QtGui.QApplication.instance().exec_()
 
 # Close all windows and unload the depth device
 depth_stream.stop()
