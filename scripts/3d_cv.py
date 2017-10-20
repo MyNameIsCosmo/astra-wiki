@@ -12,6 +12,65 @@ import pyqtgraph.opengl as gl
 openni2.initialize()
 dev = openni2.Device.open_any()
 
+'''
+OpenNI Options:
+    IMAGE_REGISTRATION_DEPTH_TO_COLOR
+    IMAGE_REGISTRATION_OFF
+Sensor Options:
+    SENSOR_COLOR
+    SENSOR_DEPTH
+    SENSOR_IR
+Pixel Format Options:
+    PIXEL_FORMAT_DEPTH_100_UM
+    PIXEL_FORMAT_DEPTH_1_MM
+    PIXEL_FORMAT_GRAY16
+    PIXEL_FORMAT_GRAY8
+    PIXEL_FORMAT_JPEG
+    PIXEL_FORMAT_RGB888
+    PIXEL_FORMAT_SHIFT_9_2
+    PIXEL_FORMAT_SHIFT_9_3
+    PIXEL_FORMAT_YUV422
+    PIXEL_FORMAT_YUYV
+OpenNI Functions:
+    configure_logging(directory=None, severity=None, console=None)
+    convert_depth_to_color(depthStream, colorStream, depthX, depthY, depthZ)
+    convert_depth_to_world(depthStream, depthX, depthY, depthZ)
+    convert_world_to_depth(depthStream, worldX, worldY, worldZ)
+    get_bytes_per_pixel(format)
+    get_log_filename()
+    get_version()
+    initialize(dll_directories=['.'])
+    is_initialized()
+    unload()
+    wait_for_any_stream(streams, timeout=None)
+'''
+
+class OpenNIDevice(openni2.Device):
+    def __init__(self, uri=None, mode=None):
+        openni2.Device.__init__(uri)
+        self.stream_color = None
+        self.stream_depth = None
+        self.stream_ir = None
+        self.stream_info = {
+            'color': {'active': False, 'pointer': self.stream_color,
+                  'x': 640, 'y': 480, 'fps': 30, 
+                  'pixelFormat': PIXEL_FORMAT_RGB888},
+            'depth': {'active': False, 'pointer': self.stream_depth,
+                  'x': 640, 'y': 480, 'fps': 30, 
+                  'pixelFormat': PIXEL_FORMAT_DEPTH_100_UM},
+            'ir': {'active': False, 'pointer': self.stream_ir,
+                   'x': 640, 'y': 480, 'fps': 30, 
+                   'pixelFormat': c_api.OniPixelFormat.ONI_PIXEL_FORMAT_DEPTH_1_MM},
+                       }  
+
+
+    def open_depth_stream(self, x=640, y=480, fps=30, pixelFormat = c_api.OniPixelFormat.ONI_PIXEL_FORMAT_DEPTH_100_UM):
+        self.stream_info = {x, y, fps, pixelFormat}
+        self.stream_depth = self.create_depth_stream()
+        self.stream_depth.set_video_mode(openni2.VideoMode(pixelFormat = pixelFormat, 
+
+
+
 # Start the depth stream
 depth_stream = dev.create_depth_stream()
 depth_stream.start()
