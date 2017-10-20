@@ -28,6 +28,16 @@ selecting = False
 mousex = 0
 mousey = 0
 
+'''
+class CvToQImage(QImage):
+    def __init__(self, img, mapping="RGB"):
+        height, width, channel = img.shape
+        bytesPerLine = 3 * width
+        self.mapping = mapping
+        #self.qImg = QImage(img.data, width, height, bytesPerLine, QImage.Format_RGB888)
+        super(CvToQImage, self).__init__(img, width, height, QImage.Format_RGB888)
+'''
+
 # Instrinsic calibration values guestimated.
 #  Perform OpenCV monocular camera calibration for accurate depth data
 def point_cloud(depth, cx=328, cy=241, fx=586, fy=589, scale=0.0001):
@@ -55,7 +65,6 @@ def point_and_shoot(event, x, y, flags, param):
         selecting = False
         if (refPt[0] != (x,y)):
             refPt.append((x,y))
-        print refPt
 
 #QT app
 app = QtGui.QApplication([])
@@ -107,6 +116,7 @@ def update():
 
     color_img= color_img.copy()
     depth_img= depth_img.copy()
+
     try:
         if selecting:
             cv2.rectangle(color_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
@@ -118,42 +128,54 @@ def update():
             top = min(refPt[0][1],refPt[1][1])
             right = max(refPt[0][0],refPt[1][0])
             bottom = max(refPt[0][1],refPt[1][1])
-            roi = depth_image[top:left,bottom:right] # because the image is 480x640 not 640x480
-            print "{}:{}, {}:{}".format(refPt[0][0], refPt[0][1], refPt[1][0], refPt[1][1])
-            print "{}:{}, {}:{}".format(left, top, right, bottom)
 
-            print roi.shape
+            # TODO:np valid numbers, NaN 
+            roi = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+            valid = (roi > 0) & (roi < 65536.0)
+            roi = np.where(valid, roi, np.nan)
 
-            roi_mean = roi.mean()/10000
-            roi_max = roi.max()/10000
-            roi_min = roi.min()/10000
-            roi_std = np.std(roi)/10000
-            roi_std_from_mean = (np.std(roi) - roi_mean)
+            roi_mean = np.round(np.nanmean(roi)/10000, 5)
+            roi_max = np.round(np.nanmax(roi)/10000, 5)
+            roi_min = np.round(np.nanmin(roi)/10000, 5)
+            roi_std = np.round(np.nanstd(roi)/10000, 5)
+            roi_std_from_mean = (roi_std - roi_mean)
 
 
-            cv2.putText(color_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
-            cv2.putText(color_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
-            cv2.putText(color_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
-            cv2.putText(color_img,"Standard Deviation of ROI: {}".format(roi_std_from_mean), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+            #cv2.rectangle(color_img, (5,5), (250,65), (50, 50, 50, 0), -1)
+            cv2.putText(color_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(color_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(color_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(color_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
             print "Mean of ROI: ", roi_mean
             print "Max of ROI: ", roi_max
             print "Min of ROI: ", roi_min
-            print "Standard Deviation of ROI: ", roi_std_from_mean
+            print "Standard Deviation of ROI: ", roi_std
         elif len(refPt) == 1:
             point = (refPt[0][0],refPt[0][1])
             point_distance = float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)
-            print depth_image[refPt[0][1]][refPt[0][0]]
+            print point_distance
             cv2.circle(color_img, refPt[0], 3, (0,0,255), 1)
             cv2.circle(depth_img, refPt[0], 3, (0,0,255), 1)
-            cv2.putText(color_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
-            cv2.putText(color_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 255)
+            cv2.putText(color_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(color_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, 0, 2)
+            cv2.putText(color_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
     except Exception, e:
         print e
 
-    depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/65535.0))
+    min_depth = 4500.0
+    max_depth = float(max(np.nanmax(depth_img), 65535.0/4.0))
+    print max_depth
+    alpha = float(min_depth/max_depth)
+    depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/(65535.0/2.0)))
 
     img = np.concatenate((color_img, depth_img), 1)
 
+    depth_image = np.flipud(depth_image)
 
     x, y, z, cloud = point_cloud(depth_image)
 
@@ -168,11 +190,20 @@ def update():
     pos[:, 2] = y
 
     #size = np.empty((pos.shape[0]))
-    #color = np.empty((pos.shape[0], 4))
 
     #for i in range(pos.shape[0]):
     #    size[i] = 0.1
     #    color[i] = (1,0,0,1)
+
+    '''
+    if len(refPt) > 0: 
+        colors = np.empty((pos.shape[0], 4))
+        if (point_distance > 0):
+            valid = (z > point_distance-0.05) & (z < point_distance + 0.05)
+        elif (roi_mean > 0):
+            valid = (z > roi_mean-0.05) & (z  < roi_mean+0.05)
+        colors = np.where(valid, 1, 0)
+        '''
 
     #d = np.ndarray((depth_frame.height, depth_frame.width),dtype=np.uint16,buffer=points)#/10000
     out = pos
@@ -180,7 +211,7 @@ def update():
     # Display the reshaped depth frame using OpenCV
     cv2.imshow("Depth Image", img)
 
-    sp2.setData(pos=out, size=2, color=colors, pxMode=True)
+    sp2.setData(pos=out, size=3, color=colors, pxMode=True)
 
     key = cv2.waitKey(1) & 0xFF
     if (key == 27 or key == ord('q') or key == ord('x') or key == ord("c")):
