@@ -50,24 +50,26 @@ class OpenNIStream(openni2.VideoStream):
         self.pixelFormat = None
         self.frame = None
         self.frame_data = None
-        self.frame_data_buffer = None
 
     def setVideoMode(self, x, y, fps, pixelFormat):
-        print "{}, {}, {}, {}".format(x,y,fps,pixelFormat)
-        print self.set_video_mode
+        self.x = x
+        self.y = y
+        self.fps = fps
+        self.pixelFormat = pixelFormat
         self.set_video_mode(openni2.VideoMode(pixelFormat = pixelFormat, resolutionX = x, resolutionY = y, fps = fps))
         return True
 
-    def getData(self, ctype = None):
+    def _getData(self, ctype = None):
         ctype = ctype if (ctype) else self.ctype
         self.frame = self.read_frame()
-        self.frame_data_buffer = self.get_buffer_as(ctype)
+        frame_data_buffer = self.frame.get_buffer_as(ctype)
         if (ctype is ctypes.c_ubyte):
             dtype = np.uint8
         else:
             # FIXME: Handle this better?
             dtype = np.uint16
-        self.frame_data = np.ndarray((depth_frame.height,depth_frame.width),dtype=dtype,buffer=self.frame_data)
+        #self.frame_data = np.ndarray((self.frame.height,self.frame.width),dtype=dtype,buffer=frame_data_buffer)
+        self.frame_data = np.frombuffer(frame_data_buffer, dtype=dtype)
         return self.frame_data
 
 class OpenNIStream_Color(OpenNIStream):
@@ -79,6 +81,12 @@ class OpenNIStream_Color(OpenNIStream):
         self.ctype = ctypes.c_uint8
         self.pixelFormat = openni2.PIXEL_FORMAT_RGB888
 
+    def getData(self, ctype = None):
+        self._getData(ctype)
+        self.frame_data.shape = (480, 640, 3) #reshape
+        self.frame_data = self.frame_data[...,::-1] #bgr to rgb
+        return self.frame_data
+
 class OpenNIStream_Depth(OpenNIStream):
     def __init__(self, device):
         OpenNIStream.__init__(self, device, openni2.SENSOR_DEPTH)
@@ -87,6 +95,11 @@ class OpenNIStream_Depth(OpenNIStream):
         self.fps = 30
         self.ctype = ctypes.c_uint16
         self.pixelFormat = openni2.PIXEL_FORMAT_DEPTH_100_UM
+
+    def getData(self, ctype = None):
+        self._getData(ctype)
+        self.frame_data.shape = (480, 640)
+        return self.frame_data
 
 class OpenNIStream_IR(OpenNIStream):
     def __init__(self, device):
@@ -97,38 +110,42 @@ class OpenNIStream_IR(OpenNIStream):
         self.ctype = ctypes.c_uint16
         self.pixelFormat = openni2.PIXEL_FORMAT_GRAY16
 
+    def getData(self, ctype = None):
+        self._getData(ctype)
+        self.frame_data.shape = (480, 640)
+        return self.frame_data
+
 class OpenNIDevice(openni2.Device):
     def __init__(self, uri=None, mode=None):
         if (not openni2.is_initialized()):
             openni2.initialize()
+        #openni2.configure_logging(severity=0, console=True)
         openni2.Device.__init__(self, uri)
         self.stream = {'color': OpenNIStream_Color(self),
                        'depth': OpenNIStream_Depth(self),
                        'ir': OpenNIStream_IR(self)}
 
     def stop(self):
-        self.stream_color.stop()
-        self.stream_depth.stop()
-        self.stream_ir.stop()
+        for s in self.stream:
+            self.stream[s].stop()
         openni2.unload()
 
     def open_stream(self, stream_type, x=640, y=480, fps=30, pixelFormat=None):
-        #try:
-        print "{}, {}, {}, {}, {}".format(stream_type, x, y, fps, pixelFormat)
-        if (not self.has_sensor(stream_type)):
-            print "Device does not have stream type of {}".format(stream_type)
+        try:
+            if (not self.has_sensor(stream_type)):
+                print "Device does not have stream type of {}".format(stream_type)
+                return False
+            stream_name = STREAM_NAMES[stream_type.value]
+            if (not pixelFormat):
+                pixelFormat = openni2.PIXEL_FORMAT_GRAY16
+            if self.stream[stream_name].active:
+                print "Stream already active!"
+            self.stream[stream_name].start()
+            self.stream[stream_name].setVideoMode(x, y, fps, pixelFormat)
+            self.stream[stream_name].active = True
+        except Exception as e:
+            print e
             return False
-        # FIXME: this should be cleaner
-        stream_name = STREAM_NAMES[stream_type.value-1]
-        if (not pixelFormat):
-            pixelFormat = openni2.PIXEL_FORMAT_GRAY16
-        if self.stream[stream_name].active:
-            print "Stream already active!"
-        self.stream[stream_name].start()
-        self.stream[stream_name].setVideoMode(x, y, fps, pixelFormat)
-        #except Exception as e:
-        #    print e
-        #    return False
         return True
 
     def open_stream_color(self, x=640, y=480, fps=30, pixelFormat = openni2.PIXEL_FORMAT_RGB888):
@@ -149,7 +166,7 @@ class OpenNIDevice(openni2.Device):
                 print "Device does not have stream type of {}".format(stream_type)
                 return False
 
-            stream_name = STREAM_NAMES[stream_type]
+            stream_name = STREAM_NAMES[stream_type.value]
             if not self.stream[stream_name].active:
                 print "Stream not active!"
 
@@ -173,18 +190,25 @@ if __name__ == "__main__":
 
     import cv2
     
-    cv2.namedWindow("Image")
+    cv2.namedWindow("Depth Image")
+    cv2.namedWindow("Color Image")
+
+    device.open_stream_depth()
+    device.open_stream_color()
 
     while True:
-        device.open_stream_depth()
         depth_img = device.get_frame_depth()
         depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/65535.0))
 
         cv2.imshow("Depth Image", depth_img)
 
+        color_img = device.get_frame_color()
+        cv2.imshow("Color Image", color_img)
+
+
         key = cv2.waitKey(1) & 0xFF
         if (key == 27 or key == ord('q') or key == ord('x') or key == ord("c")):
-            self.device.stop()
+            device.stop()
             break
     cv2.destroyAllWindows()
 
