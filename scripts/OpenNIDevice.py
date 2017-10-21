@@ -5,6 +5,17 @@ from openni import openni2
 from openni import _openni2 as c_api
 
 '''
+TODO:
+    QT config interface
+    QT device finder/selector
+    Multiple device viewer
+    OpenCV image in QT interface
+    PCL integration
+    QT GL 3d viewer
+    QT VTK 3d viewer
+'''
+
+'''
 OpenNI Options:
     IMAGE_REGISTRATION_DEPTH_TO_COLOR
     IMAGE_REGISTRATION_OFF
@@ -35,6 +46,15 @@ OpenNI Functions:
     is_initialized()
     unload()
     wait_for_any_stream(streams, timeout=None)
+OpenNI.device functions:
+    get_device_info()
+    get_sensor_info(SENSOR_TYPE)
+    has_sensor(SENSOR_TYPE)
+    create_stream(SENSOR_TYPE)
+    is_image_registration_mode_supported(True/False)
+    get_image_registration_mode()
+    set_image_registration_mode(True/False)
+    .depth_color_sync
 '''
 
 STREAM_NAMES = {1: "ir", 2: "color", 3: "depth"}
@@ -66,7 +86,7 @@ class OpenNIStream(openni2.VideoStream):
         if (ctype is ctypes.c_ubyte):
             dtype = np.uint8
         else:
-            # FIXME: Handle this better?
+            # FIXME: Handle this better? map pixelFormat to np/ctype?
             dtype = np.uint16
         #self.frame_data = np.ndarray((self.frame.height,self.frame.width),dtype=dtype,buffer=frame_data_buffer)
         self.frame_data = np.frombuffer(frame_data_buffer, dtype=dtype)
@@ -112,7 +132,7 @@ class OpenNIStream_IR(OpenNIStream):
 
     def getData(self, ctype = None):
         self._getData(ctype)
-        self.frame_data.shape = (480, 640)
+        self.frame_data.shape = (480, 640, 3) #reshape
         return self.frame_data
 
 class OpenNIDevice(openni2.Device):
@@ -168,7 +188,8 @@ class OpenNIDevice(openni2.Device):
 
             stream_name = STREAM_NAMES[stream_type.value]
             if not self.stream[stream_name].active:
-                print "Stream not active!"
+                print "{} stream not active!".format(stream_name)
+                return False
 
             return self.stream[stream_name].getData()
         except Exception as e:
@@ -189,12 +210,16 @@ if __name__ == "__main__":
     device = OpenNIDevice()
 
     import cv2
+
+    # FIXME: IR doesn't work?
     
     cv2.namedWindow("Depth Image")
     cv2.namedWindow("Color Image")
+    #cv2.namedWindow("IR Image")
 
     device.open_stream_depth()
     device.open_stream_color()
+    #device.open_stream_ir()
 
     while True:
         depth_img = device.get_frame_depth()
@@ -204,6 +229,9 @@ if __name__ == "__main__":
 
         color_img = device.get_frame_color()
         cv2.imshow("Color Image", color_img)
+
+        #ir_img = device.get_frame_ir()
+        #cv2.imshow("IR Image", ir_img)
 
 
         key = cv2.waitKey(1) & 0xFF
