@@ -69,10 +69,13 @@ def point_and_shoot(event, x, y, flags, param):
 #QT app
 app = QtGui.QApplication([])
 w = gl.GLViewWidget()
+w.opts['distance'] = 2
+w.opts['azimuth'] = -90
+w.opts['elevation'] = 0
+w.opts['fov'] = 65
+w.opts['center'] = QtGui.QVector3D(0.0, 1, 0.0)
 w.show()
 g = gl.GLGridItem()
-
-print w.cameraPosition()
 
 w.addItem(g)
 
@@ -169,7 +172,6 @@ def update():
 
     min_depth = 4500.0
     max_depth = float(max(np.nanmax(depth_img), 65535.0/4.0))
-    print max_depth
     alpha = float(min_depth/max_depth)
     depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/(65535.0/2.0)))
 
