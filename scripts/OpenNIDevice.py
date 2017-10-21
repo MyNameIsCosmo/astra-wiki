@@ -59,6 +59,18 @@ OpenNI.device functions:
 
 STREAM_NAMES = {1: "ir", 2: "color", 3: "depth"}
 
+def openni_list():
+    if (not openni2.is_initialized()):
+        print "OpenNi2 is not Initialized! Initializing."
+        openni2.initialize()
+    pdevs = ctypes.POINTER(c_api.OniDeviceInfo)()
+    count = ctypes.c_int()
+    c_api.oniGetDeviceList(ctypes.byref(pdevs), ctypes.byref(count))
+    devices = [(pdevs[i].uri, pdevs[i].vendor, pdevs[i].name) for i in range(count.value)]
+    c_api.oniReleaseDeviceList(pdevs)
+    
+    return devices
+
 class OpenNIStream(openni2.VideoStream):
     def __init__(self, device, sensor_type):
         openni2.VideoStream.__init__(self, device, sensor_type)
@@ -138,6 +150,7 @@ class OpenNIStream_IR(OpenNIStream):
 class OpenNIDevice(openni2.Device):
     def __init__(self, uri=None, mode=None):
         if (not openni2.is_initialized()):
+            print "OpenNi2 is not Initialized! Initializing."
             openni2.initialize()
         #openni2.configure_logging(severity=0, console=True)
         openni2.Device.__init__(self, uri)
