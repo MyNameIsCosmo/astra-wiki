@@ -3,20 +3,22 @@ import cv2
 import numpy as np
 
 from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph.opengl as gl
 from OpenNIDevice import *
+
+
 
 class CvToQImage(QtGui.QImage):
 
-    def __init__(self, img, mapping="RGB"):
+    def __init__(self, img, mapping=QtGui.QImage.Format_RGB888):
         #FIXME: map "mapping" values to qimage formats
         if len(img.shape) > 2:
             height, width, channel = img.shape
         else:
             height, width = img.shape
         bytesPerLine = 3 * width
-        self.mapping = mapping
         #self.qImg = QImage(img.data, width, height, bytesPerLine, QImage.Format_RGB888)
-        super(CvToQImage, self).__init__(img.tostring(), width, height, QtGui.QImage.Format_RGB888)
+        super(CvToQImage, self).__init__(img.tostring(), width, height, mapping)
 
 class ImageView(QtGui.QLabel):
     def __init__(self, parent=None):
@@ -45,13 +47,14 @@ class ImageWidget(QtGui.QWidget):
         if image:
             self.update(image, height, width)
 
-    def update(self, image):
-	self.imageLabel.updateFrame(CvToQImage(image))
+    def update(self, image, mapping=QtGui.QImage.Format_RGB888):
+	self.imageLabel.updateFrame(CvToQImage(image, mapping=mapping))
 
 class DeviceViewer(QtGui.QWidget):
 
     def __init__(self, parent=None, device=None):
         super(QtGui.QWidget, self).__init__(parent)
+        self.destroyed.connect(self._destroy)
         self.parent_ = parent
         self.uri, self.make, self.model = device
         self.setObjectName("{} {}".format(self.make, self.model))
@@ -62,34 +65,43 @@ class DeviceViewer(QtGui.QWidget):
 
     def __widgets(self):
         self.widget_image_color = ImageWidget(self)
-        #self.widget_image_color.resize(640/2,480/2)
-        #self.widget_image_depth = ImageWidget(self)
-        #self.widget_image_depth.resize(640/2,480/2)
+        self.widget_image_color.setMaximumSize(640/2,480/2)
+        self.widget_image_color.setMinimumSize(640/2,480/2)
+        self.widget_image_depth = ImageWidget(self)
+        self.widget_image_depth.setMaximumSize(640/2,480/2)
+        self.widget_image_depth.setMinimumSize(640/2,480/2)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
         self.hbox = QtGui.QHBoxLayout()
 
         self.hbox.addWidget(self.widget_image_color)
-        #self.hbox.addWidget(self.widget_image_depth)
+        self.hbox.addWidget(self.widget_image_depth)
         self.vbox.addLayout(self.hbox)
 
         self.setLayout(self.vbox)
+
+    def _destroy(self):
+        print "Destroying"
+        if self.device:
+            self.device.stop()
+            print "Device stopped"
     
     def _update_images(self):
         image_color = self.device.get_frame_color()
-        #image_color = cv2.resize(image_color, (0,0), fx=0.25, fy=0.25) 
-        #image_depth = self.device.get_frame_depth()
-        #image_depth = cv2.resize(image_depth, (0,0), fx=0.25, fy=0.25) 
+        image_depth = self.device.get_frame_depth()
 
-        #image_depth = cv2.convertScaleAbs(image_depth, alpha=(255.0/65535.0))
+        image_depth = cv2.convertScaleAbs(image_depth, alpha=(255.0/65535.0))
+
+        image_color = np.fliplr(image_color)
+        image_depth = np.fliplr(image_depth)
 
         self.widget_image_color.update(image_color)
-        #self.widget_image_depth.update(image_depth)
+        self.widget_image_depth.update(image_depth, mapping=QtGui.QImage.Format_Indexed8)
 
     def _init_device(self, uri):
         self.device = OpenNIDevice(uri)
-        #self.device.open_stream_depth()
+        self.device.open_stream_depth()
         self.device.open_stream_color()
 
         self.timer = QtCore.QTimer(self)
@@ -201,6 +213,7 @@ class MainWindow(QtGui.QMainWindow):
     def _closeTab (self, currentIndex):
         #FIXME: Handle openni close
         currentQWidget = self.tabWidget.widget(currentIndex)
+        currentQWidget._destroy()
         currentQWidget.deleteLater()
         self.tabWidget.removeTab(currentIndex)   
 
