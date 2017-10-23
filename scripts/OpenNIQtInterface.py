@@ -6,7 +6,90 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 from OpenNIDevice import *
 
+import time
 
+class Timer:    
+    def __enter__(self):
+        self.start = time.clock()
+        return self
+
+    def __exit__(self, *args):
+        self.end = time.clock()
+        self.interval = self.end - self.start
+
+class PointCloudViewer(gl.GLViewWidget):
+
+    def __init__(self, parent=None):
+        gl.GLViewWidget.__init__(self, parent)
+        #super(gl.GLViewWidget, self).__init__(parent)
+        self.parent_ = parent
+        self.__opts()
+        self.__widgets()
+        self.__layout()
+
+    def __opts(self):
+        self.opts['distance'] = 2
+        self.opts['azimuth'] = -90
+        self.opts['elevation'] = 0
+        self.opts['fov'] = 65
+        self.opts['center'] = QtGui.QVector3D(0.0, 0.75, 0.0)
+
+    def __widgets(self):
+        self.grid = gl.GLGridItem()
+        self.scatterPlot = gl.GLScatterPlotItem(pos=np.zeros((10000,3)))
+        self.scatterPlot.rotate(-90,1,0,0)
+        self.scatterPlot.scale(1,1,1)
+
+    def __layout(self):
+        self.addItem(self.grid)
+        self.addItem(self.scatterPlot)
+
+    def _depth_image_to_point_cloud(self, image_depth, image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.01):
+        #FIXME: scale appropriately to depth_image size, 1mm or 100um
+        try:
+            with Timer() as t:
+                depth = image_depth.astype(np.float32)
+                rows, cols = depth.shape
+                c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
+                valid = (depth > 0) & (depth < 65536.0)
+                z = np.where(valid, depth, np.nan)
+                x = np.where(valid, (z * (c - cx)) / fx, 0)
+                y = np.where(valid, (z * (r - cy)) / fy, 0)
+                pointcloud = np.dstack((x, y, z)) * scale
+        finally:
+            print('Point Cloud Building took %.03f sec.' % t.interval)
+
+        return pointcloud
+    
+    def update_plot(self, image_depth=None, image_color=None, cloud=None, size=3, pxMode=True):
+        if cloud is None:
+            if image_depth is None:
+                raise TypeError('A depth image or point cloud are needed to update the scatter plot!')
+            cloud = self._depth_image_to_point_cloud(image_depth, image_color)
+
+        try:
+            with Timer() as t:
+                colors = ((1.0, 1.0, 1.0, 1.0))
+
+                x = cloud[:,:,0].flatten()
+                y = cloud[:,:,1].flatten()
+                z = cloud[:,:,2].flatten()
+                
+                N = max(x.shape)
+                pos = np.empty((N,3))
+                pos[:,0] = x
+                pos[:,1] = y
+                pos[:,2] = z
+
+                self.scatterPlot.setData(pos=pos, color=colors, size=size, pxMode=pxMode)
+        finally:
+            pass
+            #TODO: print debug
+            #print('Point Cloud Rendering took %.03f sec.' % t.interval)
+    
+    def depth_to_cloud(self, image_depth, image_color=None):
+        cloud = self._depth_image_to_point_cloud(image_depth, image_color)
+        return cloud
 
 class CvToQImage(QtGui.QImage):
 
@@ -65,27 +148,39 @@ class DeviceViewer(QtGui.QWidget):
 
     def __widgets(self):
         self.widget_image_color = ImageWidget(self)
-        self.widget_image_color.setMaximumSize(640/2,480/2)
-        self.widget_image_color.setMinimumSize(640/2,480/2)
         self.widget_image_depth = ImageWidget(self)
-        self.widget_image_depth.setMaximumSize(640/2,480/2)
-        self.widget_image_depth.setMinimumSize(640/2,480/2)
+        self.widget_point_cloud = PointCloudViewer(self)
+
+        w, h = (640*.65, 480*.65)
+        self.widget_image_color.setMaximumSize(w, h)
+        self.widget_image_color.setMinimumSize(w, h)
+        self.widget_image_depth.setMaximumSize(w, h)
+        self.widget_image_depth.setMinimumSize(w, h)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
-        self.hbox = QtGui.QHBoxLayout()
+        self.box_cloud = QtGui.QHBoxLayout()
+        self.box_image = QtGui.QHBoxLayout()
 
-        self.hbox.addWidget(self.widget_image_color)
-        self.hbox.addWidget(self.widget_image_depth)
-        self.vbox.addLayout(self.hbox)
+        self.vbox.setMargin(0)
+        self.box_cloud.setMargin(0)
+        self.box_image.setMargin(0)
+        self.vbox.setSpacing(0)
+        self.box_cloud.setSpacing(0)
+        self.box_image.setSpacing(0)
+
+        self.box_cloud.addWidget(self.widget_point_cloud)
+        self.box_image.addWidget(self.widget_image_color)
+        self.box_image.addWidget(self.widget_image_depth)
+
+        self.vbox.addLayout(self.box_cloud)
+        self.vbox.addLayout(self.box_image)
 
         self.setLayout(self.vbox)
 
     def _destroy(self):
-        print "Destroying"
         if self.device:
             self.device.stop()
-            print "Device stopped"
     
     def _update_images(self):
         image_color = self.device.get_frame_color()
@@ -98,6 +193,8 @@ class DeviceViewer(QtGui.QWidget):
 
         self.widget_image_color.update(image_color)
         self.widget_image_depth.update(image_depth, mapping=QtGui.QImage.Format_Indexed8)
+
+        self.widget_point_cloud.update_plot(image_depth, image_color)
 
     def _init_device(self, uri):
         self.device = OpenNIDevice(uri)
