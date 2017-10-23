@@ -116,7 +116,6 @@ class OpenNIStream_Color(OpenNIStream):
     def getData(self, ctype = None):
         self._getData(ctype)
         self.frame_data.shape = (480, 640, 3) #reshape
-        self.frame_data = self.frame_data[...,::-1] #bgr to rgb
         return self.frame_data
 
 class OpenNIStream_Depth(OpenNIStream):
@@ -161,7 +160,7 @@ class OpenNIDevice(openni2.Device):
     def stop(self):
         for s in self.stream:
             self.stream[s].stop()
-        openni2.unload()
+        #openni2.unload()
 
     def open_stream(self, stream_type, x=640, y=480, fps=30, pixelFormat=None):
         try:
@@ -251,5 +250,6 @@ if __name__ == "__main__":
         if (key == 27 or key == ord('q') or key == ord('x') or key == ord("c")):
             device.stop()
             break
+    openni2.unload()
     cv2.destroyAllWindows()
 
