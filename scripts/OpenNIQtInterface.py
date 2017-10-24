@@ -130,7 +130,13 @@ class ImageView(QtGui.QLabel):
         self.parent_ = parent
         self._image = None
 
-    def updateFrame(self, img, height=640, width=480, pixmap=False):
+    def mousePressEvent(self, QMouseEvent):
+        print QMouseEvent.pos()
+
+    def mouseReleaseEvent(self, QMouseEvent):
+        print QMouseEvent.pos()
+
+    def _updateFrame(self, img, height=640, width=480, pixmap=False):
         self._image = img
         if self._image is not None:
             if pixmap:
@@ -143,20 +149,8 @@ class ImageView(QtGui.QLabel):
                 _image_pixmap = _image_pixmap.scaled(height,width,QtCore.Qt.KeepAspectRatio)
             self.setPixmap(_image_pixmap)
 
-class ImageWidget(QtGui.QWidget):
-
-    def __init__(self, parent, image=None, height=640, width=480):
-        super(QtGui.QWidget, self).__init__(parent)
-        layout = QtGui.QVBoxLayout()
-        self.imageLabel = ImageView(self)
-        layout.addWidget(self.imageLabel)
-        self.setLayout(layout)
-        
-        if image:
-            self.update(image, height, width)
-
     def update(self, image, mapping=QtGui.QImage.Format_RGB888):
-	self.imageLabel.updateFrame(CvToQImage(image, mapping=mapping))
+	self._updateFrame(CvToQImage(image, mapping=mapping))
 
 class DeviceViewer(QtGui.QWidget):
 
@@ -172,26 +166,11 @@ class DeviceViewer(QtGui.QWidget):
         self._init_device(self.uri)
 
     def __widgets(self):
-        self.widget_image_color = ImageWidget(self)
-        self.widget_image_depth = ImageWidget(self)
+        self.widget_image_color = ImageView(self)
+        self.widget_image_depth = ImageView(self)
         self.widget_point_cloud = PointCloudViewer(self)
 
-        # FIXME: size policy doesn't work
-        #sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
-        #sizePolicy.setHeightForWidth(True)
-        #self.widget_image_color.setSizePolicy(sizePolicy)
-        #self.widget_image_depth.setSizePolicy(sizePolicy)
-
-        w, h = (640*.8, 480*.8)
-        self.widget_image_color.setMaximumSize(w, h)
-        self.widget_image_color.resize(w,h)
-        self.widget_image_color.setMinimumSize(w, h)
-        self.widget_image_depth.setMaximumSize(w, h)
-        self.widget_image_depth.resize(w,h)
-        self.widget_image_depth.setMinimumSize(w, h)
-
         self.widget_point_cloud.setMinimumHeight(200)
-        self.widget_point_cloud.setContentsMargins(0,0,0,0)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
