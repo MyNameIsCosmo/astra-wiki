@@ -1,3 +1,11 @@
+'''
+TODO: 
+    Camera intrinsics
+    Camera position offset in 3d space
+    Pop-up for grid properties
+    Pop-up for camera properties
+'''
+
 import sys
 import cv2
 import numpy as np
@@ -45,7 +53,7 @@ class PointCloudViewer(gl.GLViewWidget):
         self.addItem(self.grid)
         self.addItem(self.scatterPlot)
 
-    def _depth_image_to_point_cloud(self, image_depth, image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.01):
+    def _depth_image_to_point_cloud(self, image_depth, image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.1):
         #FIXME: scale appropriately to depth_image size, 1mm or 100um
         pointcloud = np.zeros((1,1))
         colors = ((1.0, 1.0, 1.0, 1.0))
@@ -63,7 +71,7 @@ class PointCloudViewer(gl.GLViewWidget):
             colors = np.divide(colors, 255) # values must be between 0.0 - 1.0
             colors = colors.reshape(colors.shape[0] * colors.shape[1], 3 ) # From: Rows X Cols X RGB -to- [[r,g,b],[r,g,b]...]
             #colors = colors[:, :3:]  # remove alpha (fourth index) from BGRA to BGR
-            colors = colors[...,::-1] #BGR to RGB
+            #colors = colors[...,::-1] #BGR to RGB
 
         return pointcloud, colors
     
@@ -119,6 +127,7 @@ class CvToQImage(QtGui.QImage):
 class ImageView(QtGui.QLabel):
     def __init__(self, parent=None):
         super(QtGui.QLabel, self).__init__(parent)
+        self.parent_ = parent
         self._image = None
 
     def updateFrame(self, img, height=640, width=480, pixmap=False):
@@ -128,8 +137,11 @@ class ImageView(QtGui.QLabel):
                 _image_pixmap = QtGui.QPixmap(self._image)
             else:
                 _image_pixmap = QtGui.QPixmap.fromImage(self._image)
-            _image_resized = _image_pixmap.scaled(height,width,QtCore.Qt.KeepAspectRatio)
-            self.setPixmap(_image_resized)
+            if self.parent_ is not None:
+                height = self.parent_.geometry().height()
+                width = self.parent_.geometry().width()
+                _image_pixmap = _image_pixmap.scaled(height,width,QtCore.Qt.KeepAspectRatio)
+            self.setPixmap(_image_pixmap)
 
 class ImageWidget(QtGui.QWidget):
 
@@ -164,29 +176,34 @@ class DeviceViewer(QtGui.QWidget):
         self.widget_image_depth = ImageWidget(self)
         self.widget_point_cloud = PointCloudViewer(self)
 
-        w, h = (640*.65, 480*.65)
+        # FIXME: size policy doesn't work
+        #sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        #sizePolicy.setHeightForWidth(True)
+        #self.widget_image_color.setSizePolicy(sizePolicy)
+        #self.widget_image_depth.setSizePolicy(sizePolicy)
+
+        w, h = (640*.8, 480*.8)
         self.widget_image_color.setMaximumSize(w, h)
+        self.widget_image_color.resize(w,h)
         self.widget_image_color.setMinimumSize(w, h)
         self.widget_image_depth.setMaximumSize(w, h)
+        self.widget_image_depth.resize(w,h)
         self.widget_image_depth.setMinimumSize(w, h)
+
+        self.widget_point_cloud.setMinimumHeight(200)
+        self.widget_point_cloud.setContentsMargins(0,0,0,0)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
-        self.box_cloud = QtGui.QHBoxLayout()
         self.box_image = QtGui.QHBoxLayout()
 
-        self.vbox.setMargin(0)
-        self.box_cloud.setMargin(0)
-        self.box_image.setMargin(0)
+        self.vbox.setContentsMargins(0,0,0,0)
         self.vbox.setSpacing(0)
-        self.box_cloud.setSpacing(0)
-        self.box_image.setSpacing(0)
 
-        self.box_cloud.addWidget(self.widget_point_cloud)
-        self.box_image.addWidget(self.widget_image_color)
-        self.box_image.addWidget(self.widget_image_depth)
+        self.vbox.addWidget(self.widget_point_cloud, 0, QtCore.Qt.AlignTop)
+        self.box_image.addWidget(self.widget_image_color, 0, QtCore.Qt.AlignTop)
+        self.box_image.addWidget(self.widget_image_depth, 0, QtCore.Qt.AlignTop)
 
-        self.vbox.addLayout(self.box_cloud)
         self.vbox.addLayout(self.box_image)
 
         self.setLayout(self.vbox)
@@ -213,6 +230,9 @@ class DeviceViewer(QtGui.QWidget):
         self.device = OpenNIDevice(uri)
         self.device.open_stream_depth()
         self.device.open_stream_color()
+
+        self.device.depth_color_sync = True
+        self.device.set_image_registration_mode(openni2.IMAGE_REGISTRATION_DEPTH_TO_COLOR)
 
         self.timer = QtCore.QTimer(self)
         self.timer.start(30) # FIXME: use 1000/FPS or whatever
@@ -279,7 +299,7 @@ class MainWindow(QtGui.QMainWindow):
 
     def __init__(self, parent=None):
         super(QtGui.QMainWindow, self).__init__(parent)
-        self._set_window_size()
+        self._set_window_size(800,600,False)
         self.__layout()
         self.__init_menu()
         self.statusBar().showMessage('Listing Devices')
@@ -315,24 +335,22 @@ class MainWindow(QtGui.QMainWindow):
     def _destruct(self):
         print "Destruction TODO"
 
-    def _set_window_size(self, width=800, height=600):
+    def _set_window_size(self, width=800, height=600, resizable=False):
         self.resize(width, height)
-        self.setMinimumSize(width, height)
-        self.setMaximumSize(width, height)
+        if not resizable:
+            self.setMinimumSize(width, height)
+            self.setMaximumSize(width, height)
 
     def _closeTab (self, currentIndex):
-        #FIXME: Handle openni close
         currentQWidget = self.tabWidget.widget(currentIndex)
         currentQWidget._destroy()
         currentQWidget.deleteLater()
         self.tabWidget.removeTab(currentIndex)   
 
     def add_tab(self, cls, tooltip=None, closable=False, icon=None):
-        try:
+        name = "Unknown"
+        if hasattr(cls, "objectName"):
             name = cls.objectName()
-        except Exception, e:
-            print e
-            name = "Unknown"
         tab = self.tabWidget.addTab(cls, name)
         if tooltip:
             self.tabWidget.setTabToolTip(tab, tooltip)
