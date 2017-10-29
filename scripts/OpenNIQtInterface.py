@@ -14,6 +14,8 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 from OpenNIDevice import *
 
+#import pcl
+
 import time
 
 class Timer:    
@@ -166,24 +168,36 @@ class DeviceViewer(QtGui.QWidget):
         self._init_device(self.uri)
 
     def __widgets(self):
+        # TODO: make a QTabWidget object to handle this
+        self.tab_images = QtGui.QTabWidget()
+        self.tab_point_cloud = QtGui.QTabWidget()
+
+        self.tab_images.setTabPosition(1)
+        self.tab_point_cloud.setTabPosition(1)
+
         self.widget_image_color = ImageView(self)
         self.widget_image_depth = ImageView(self)
         self.widget_point_cloud = PointCloudViewer(self)
+
+        self.widget_image_color.setObjectName("Color")
+        self.widget_image_depth.setObjectName("Depth")
+        self.widget_point_cloud.setObjectName("Points")
 
         self.widget_point_cloud.setMinimumHeight(200)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
-        self.box_image = QtGui.QHBoxLayout()
 
         self.vbox.setContentsMargins(0,0,0,0)
         self.vbox.setSpacing(0)
 
-        self.vbox.addWidget(self.widget_point_cloud, 0, QtCore.Qt.AlignTop)
-        self.box_image.addWidget(self.widget_image_color, 0, QtCore.Qt.AlignTop)
-        self.box_image.addWidget(self.widget_image_depth, 0, QtCore.Qt.AlignTop)
+        self._add_tab(self.tab_point_cloud, self.widget_point_cloud)
+        self._add_tab(self.tab_images, self.widget_image_color)
+        self._add_tab(self.tab_images, self.widget_image_depth)
 
-        self.vbox.addLayout(self.box_image)
+
+        self.vbox.addWidget(self.tab_point_cloud, 0, QtCore.Qt.AlignTop)
+        self.vbox.addWidget(self.tab_images, 0, QtCore.Qt.AlignTop)
 
         self.setLayout(self.vbox)
 
@@ -216,6 +230,18 @@ class DeviceViewer(QtGui.QWidget):
         self.timer = QtCore.QTimer(self)
         self.timer.start(30) # FIXME: use 1000/FPS or whatever
         self.timer.timeout.connect(self._update_images)
+
+    def _add_tab(self, tab_widget, cls, tooltip=None, closable=False, icon=None):
+        name = "Unknown"
+        if hasattr(cls, "objectName"):
+            name = cls.objectName()
+        tab = tab_widget.addTab(cls, name)
+        if tooltip:
+            tab_widget.setTabToolTip(tab, tooltip)
+        if not closable:
+            tab_widget.tabBar().setTabButton(tab, QtGui.QTabBar.RightSide,None)
+        if icon:
+            tab_widget.setTabIcon(icon)
         
 class DeviceSelection(QtGui.QWidget):
 
