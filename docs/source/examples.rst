@@ -270,10 +270,24 @@ Now create a new Python file and put the following code in it:
 
 .. image:: _static/examples_opencv.jpg
 
-Depth Visualization using ROS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Depth Stream using Python, OpenCV, pyqtgraph, and PCL
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Install `ROS <http://ros.org>`_
+Install Prerequisites
+---------------------
+
+::
+    pip install opencv-python
+    pip install openni
+    pip install pyqtgraph
+    pip install PyOpenGL
+    conda install python-pcl
+
+Code Setup
+----------
+
+.. literalinclude:: 3d_cv.py
+   :language: python
 
 Depth Visualization using Python QT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -293,34 +307,3 @@ Depth Visualization using Python PCL
 - Install Python-PCL using Anaconda
     - :code:`conda install -c https://conda.anaconda.org/ccordoba12 python-pcl`
 
-Depth Visualization using Python PyntCloud
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. NOTE:: The PyntCloud library is *ONLY* Python3.
-
-.. WARNING:: Work in progress, incomplete
-
-::
-
-  sudo -H pip3 install --upgrade pip
-  sudo -H pip3 install pandas numpy scipy ipython matplotlib numba laspy
-  sudo -H pip3 install git+https://github.com/daavoo/pyntcloud
-
-Depth Visualization using Python Glitter
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. WARNING:: Work in progress, incomplete
-
-::
-
-  sudo apt install python-ctypeslib
-  sudo -H pip2 install glitter
-
-Depth Visualization using Python Mayavi
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. WARNING:: Work in progress, incomplete
-
-::
-
-  sudo pip2 install mayavi
