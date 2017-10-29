@@ -69,23 +69,17 @@ class PointCloudViewer(gl.GLViewWidget):
             v_offset = (self.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
             size = v_scale + v_offset
 
-        try:
-            with Timer() as t:
-                x = cloud[:,:,0].flatten()
-                y = cloud[:,:,1].flatten()
-                z = cloud[:,:,2].flatten()
-                
-                N = max(x.shape)
-                pos = np.empty((N,3))
-                pos[:,0] = x
-                pos[:,1] = y
-                pos[:,2] = z
+        x = cloud[:,:,0].flatten()
+        y = cloud[:,:,1].flatten()
+        z = cloud[:,:,2].flatten()
+        
+        N = max(x.shape)
+        pos = np.empty((N,3))
+        pos[:,0] = x
+        pos[:,1] = y
+        pos[:,2] = z
 
-                self.scatterPlot.setData(pos=pos, color=colors, size=size, pxMode=pxMode)
-        finally:
-            pass
-            #TODO: print debug
-            #print('Point Cloud Rendering took %.03f sec.' % t.interval)
+        self.scatterPlot.setData(pos=pos, color=colors, size=size, pxMode=pxMode)
     
     def depth_to_cloud(self, image_depth, image_color=None):
         cloud = self._depth_image_to_point_cloud(image_depth, image_color)

@@ -22,25 +22,7 @@ logging_config = dict(
     handlers = {
         'console': {'class': 'logging.StreamHandler',
               'formatter': 'simple',
-              'level': logging.DEBUG},
-        '''
-        'info_file_handler': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': logging.INFO,
-            'formatter': 'simple',
-            'filename': 'info.log',
-            'maxBytes': 10485760,
-            'backupCount': 20,
-            'encoding': 'utf8'},
-        'error_file_handler': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            'level': logging.ERROR,
-            'formatter': 'simple',
-            'filename': 'errors.log',
-            'maxBytes': 10485760,
-            'backupCount': 20,
-            'encoding': 'utf8'}
-        '''
+              'level': logging.DEBUG}
         },
     loggers = {
         'OpenGL.GL.shaders': {

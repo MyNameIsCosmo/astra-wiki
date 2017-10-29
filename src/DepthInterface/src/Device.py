@@ -4,6 +4,8 @@ import numpy as np
 from openni import openni2
 from openni import _openni2 as c_api
 
+from .Common import *
+
 '''
 TODO:
     QT config interface
@@ -61,7 +63,7 @@ STREAM_NAMES = {1: "ir", 2: "color", 3: "depth"}
 
 def openni_list():
     if (not openni2.is_initialized()):
-        print "OpenNi2 is not Initialized! Initializing."
+        logger.info("OpenNi2 is not Initialized! Initializing.")
         openni2.initialize()
     pdevs = ctypes.POINTER(c_api.OniDeviceInfo)()
     count = ctypes.c_int()
@@ -149,7 +151,7 @@ class OpenNIStream_IR(OpenNIStream):
 class OpenNIDevice(openni2.Device):
     def __init__(self, uri=None, mode=None):
         if (not openni2.is_initialized()):
-            print "OpenNi2 is not Initialized! Initializing."
+            logger.info("OpenNi2 is not Initialized! Initializing.")
             openni2.initialize()
         #openni2.configure_logging(severity=0, console=True)
         openni2.Device.__init__(self, uri)
@@ -165,18 +167,18 @@ class OpenNIDevice(openni2.Device):
     def open_stream(self, stream_type, x=640, y=480, fps=30, pixelFormat=None):
         try:
             if (not self.has_sensor(stream_type)):
-                print "Device does not have stream type of {}".format(stream_type)
+                logger.error("Device does not have stream type of {}".format(stream_type))
                 return False
             stream_name = STREAM_NAMES[stream_type.value]
             if (not pixelFormat):
                 pixelFormat = openni2.PIXEL_FORMAT_GRAY16
             if self.stream[stream_name].active:
-                print "Stream already active!"
+                logger.error("{} stream already active!".format(stream_name))
             self.stream[stream_name].start()
             self.stream[stream_name].setVideoMode(x, y, fps, pixelFormat)
             self.stream[stream_name].active = True
         except Exception as e:
-            print e
+            logger.error('Failed to open stream', exc_info=True)
             return False
         return True
 
@@ -195,17 +197,17 @@ class OpenNIDevice(openni2.Device):
         '''
         try:
             if (not self.has_sensor(stream_type)):
-                print "Device does not have stream type of {}".format(stream_type)
+                logger.warning("Device does not have stream type of {}".format(stream_type))
                 return False
 
             stream_name = STREAM_NAMES[stream_type.value]
             if not self.stream[stream_name].active:
-                print "{} stream not active!".format(stream_name)
+                logger.warning("{} stream not active!".format(stream_name))
                 return False
 
             return self.stream[stream_name].getData()
         except Exception as e:
-            print e
+            logger.error("Failed to get frame", exc_info=True)
         return False
 
     def get_frame_color(self):

@@ -23,10 +23,10 @@ class ImageView(QtGui.QLabel):
         self._image = None
 
     def mousePressEvent(self, QMouseEvent):
-        print QMouseEvent.pos()
+        logger.info(QMouseEvent.pos())
 
     def mouseReleaseEvent(self, QMouseEvent):
-        print QMouseEvent.pos()
+        logger.info(QMouseEvent.pos())
 
     def _updateFrame(self, img, height=640, width=480, pixmap=False):
         self._image = img

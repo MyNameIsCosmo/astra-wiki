@@ -60,7 +60,7 @@ class DeviceSelection(QtGui.QWidget):
         tabToolTips = [unicode(self.parent_.tabWidget.tabToolTip(t)) for t in range(self.parent_.tabWidget.count())]
         uri = unicode(device[0])
         if uri in tabToolTips:
-            print "{} already open!".format(device[0])
+            logger.debug("{} already open!".format(device[0]))
             self.parent_.statusBar().showMessage("{} already open in tab #{}".format(uri, tabToolTips.index(uri))) 
         else:
             device_view = DeviceViewer(self.parent_, device) 
