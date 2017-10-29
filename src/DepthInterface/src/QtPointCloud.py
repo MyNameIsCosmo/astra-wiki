@@ -2,7 +2,7 @@ import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
-from .QtCommon import *
+from .Common import *
 
 class PointCloudViewer(gl.GLViewWidget):
 

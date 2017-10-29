@@ -1,6 +1,6 @@
 from pyqtgraph.Qt import QtCore, QtGui
 from .Device import *
-from .QtCommon import *
+from .Common import *
 from .QtDeviceViewer import *
  
 class DeviceSelection(QtGui.QWidget):

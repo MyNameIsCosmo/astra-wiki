@@ -6,7 +6,7 @@ TODO:
     Pop-up for camera properties
 '''
 import sys
-from ..src import QtCommon
+from ..src import Common
 from ..src import QtDepthInterface
 
 from pyqtgraph.Qt import QtCore, QtGui

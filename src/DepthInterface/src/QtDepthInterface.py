@@ -7,7 +7,7 @@ TODO:
 '''
 
 import sys
-from .QtCommon import *
+from .Common import *
 from .Device import *
 from .QtDeviceSelection import *
 from .QtDeviceViewer import *
@@ -54,7 +54,7 @@ class DepthInterface(QtGui.QMainWindow):
         self.fileMenu.addAction(exitButton)
 
     def _destruct(self):
-        print "Destruction TODO"
+        logger.debug('Destruction TODO')
 
     def _set_window_size(self, width=800, height=600, resizable=False):
         self.resize(width, height)

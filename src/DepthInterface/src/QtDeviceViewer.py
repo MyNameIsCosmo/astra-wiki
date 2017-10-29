@@ -4,7 +4,7 @@ import numpy as np
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 from .Device import *
-from .QtCommon import *
+from .Common import *
 from .QtCV import *
 from .QtPointCloud import *
 
