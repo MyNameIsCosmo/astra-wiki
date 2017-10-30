@@ -8,6 +8,7 @@ from .Common import *
 from .QtCV import *
 from .QtPointCloud import *
 
+
 class DeviceViewer(QtGui.QWidget):
 
     def __init__(self, parent=None, device=None):
@@ -23,35 +24,50 @@ class DeviceViewer(QtGui.QWidget):
 
     def __widgets(self):
         # TODO: make a QTabWidget object to handle this
-        self.tab_images = QtGui.QTabWidget()
-        self.tab_point_cloud = QtGui.QTabWidget()
+        self.tab_main = QtGui.QTabWidget()
+        self.widget_images = QtGui.QWidget()
+        #self.widget_info = QtGui.QWidget()
+        #self.widget_analyze = QtGui.QWidget()
+        #self.tab_images = QtGui.QTabWidget()
+        #self.tab_point_cloud = QtGui.QTabWidget()
 
-        self.tab_images.setTabPosition(1)
-        self.tab_point_cloud.setTabPosition(1)
+        self.tab_main.setTabPosition(0)
+        #self.tab_images.setTabPosition(1)
+        #self.tab_point_cloud.setTabPosition(1)
 
         self.widget_image_color = ImageView(self)
         self.widget_image_depth = ImageView(self)
         self.widget_point_cloud = PointCloudViewer(self)
 
+        self.label_info = QtGui.QLabel("Work in progress")
+        self.label_analyze = QtGui.QLabel("Work in progress")
+
         self.widget_image_color.setObjectName("Color")
         self.widget_image_depth.setObjectName("Depth")
         self.widget_point_cloud.setObjectName("Points")
+        self.widget_images.setObjectName("Stream")
+        self.label_info.setObjectName("Info")
+        self.label_analyze.setObjectName("Deflection")
 
         self.widget_point_cloud.setMinimumHeight(200)
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
+        self.vbox_images = QtGui.QVBoxLayout(self.widget_images)
 
         self.vbox.setContentsMargins(0,0,0,0)
-        self.vbox.setSpacing(0)
+        self.vbox.setSpacing(5)
 
-        self._add_tab(self.tab_point_cloud, self.widget_point_cloud)
-        self._add_tab(self.tab_images, self.widget_image_color)
-        self._add_tab(self.tab_images, self.widget_image_depth)
+        self.vbox_images.addWidget(self.widget_image_color)
+        self.vbox_images.addWidget(self.widget_image_depth)
 
+        self._add_tab(self.tab_main, self.widget_images)
+        self._add_tab(self.tab_main, self.widget_point_cloud)
+        self._add_tab(self.tab_main, self.label_analyze)
+        self._add_tab(self.tab_main, self.label_info)
 
-        self.vbox.addWidget(self.tab_point_cloud, 0, QtCore.Qt.AlignTop)
-        self.vbox.addWidget(self.tab_images, 0, QtCore.Qt.AlignTop)
+        self.vbox.addWidget(self.tab_main, 0, QtCore.Qt.AlignTop)
+        #self.vbox.addWidget(self.tab_main, 0, QtCore.Qt.AlignTop)
 
         self.setLayout(self.vbox)
 
