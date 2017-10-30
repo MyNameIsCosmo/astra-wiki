@@ -23,10 +23,6 @@ def distance_from_plane(p, plane):
     p0 = np.array(plane[0]) 
     p1 = np.array(plane[len(plane)/2])
     p2 = np.array(plane[-1])
-    
-    print p0
-    print p1
-    print p2
 
     # These two vectors are in the plane
     v1 = p2 - p0
@@ -39,9 +35,9 @@ def distance_from_plane(p, plane):
     # This evaluates a * x3 + b * y3 + c * z3 which equals d
     d = np.dot(cp, p2)
 
-    print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
+#    print('The equation is {0}x + {1}y + {2}z = {3}'.format(a, b, c, d))
 
-    print p0, p1, p2
+#    print p0, p1, p2
 
     u = p1 - p0
     v = p2 - p0
@@ -105,7 +101,7 @@ data = np.random.multivariate_normal(mean, cov, 20)
 #z = [-0.3, -0.8, -0.75, -1.21, -1.65, -0.68]
 #data = np.c_[x,y,z]
 
-print data.shape
+#print data.shape
 
 # regular grid covering the domain of the data
 #X,Y = np.meshgrid(np.arange(-3.0, 3.0, 0.5), np.arange(-3.0, 3.0, 0.5))
@@ -115,7 +111,7 @@ X,Y = np.meshgrid(np.linspace(mn[0], mx[0], 5), np.linspace(mn[1], mx[1], 5))
 XX = X.flatten()
 YY = Y.flatten()
 
-order = 1    # 1: linear, 2: quadratic
+order = 2    # 1: linear, 2: quadratic
 if order == 1:
     # best-fit linear plane
     A = np.c_[data[:,0], data[:,1], np.ones(data.shape[0])]
@@ -142,12 +138,23 @@ elif order == 2:
     C,_,_,_ = np.linalg.lstsq(A, data[:,2])
     
     # evaluate it on a grid
-    Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
+    #Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
 
-print C
+    #z = C[0]*data[:,0] + C[1]*data[:,1] + C[2]
+    Z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
 
-print data.shape
-print plane.shape
+    print('The equation is z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0]))
+    
+    #plane = np.c_[X[0], Y[0], Z[:,0]]
+    data_x = data[:,0]
+    data_y = data[:,1]
+    z = C[4]*data_x**2. + C[5]*data_y**2. + C[3]*data_x*data_y + C[1]*data_x + C[2]*data_y + C[0]
+    plane = np.c_[data[:,0], data[:,1], z] #get a higher resolution plane per data point for exact depth accuracy
+
+#print C
+
+#print data.shape
+#print plane.shape
 
 # plot points and fitted surface
 fig = plt.figure()
