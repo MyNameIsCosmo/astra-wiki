@@ -9,7 +9,7 @@ from openni import _openni2 as c_api
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
-import pcl
+#import pcl
 
 # Initialize the depth device
 openni2.initialize()
@@ -42,6 +42,9 @@ def reject_outliers(data, m = 2.):
     s = d/(mdev if mdev else 1.)
     return data[s<m]
 
+def nan_helper(y):
+    return np.isnan(y), lambda z: z.nonzero()[0]
+
 def distance_to_plane(p, plane):
     p0 = np.array(plane[0])
     p1 = np.array(plane[len(plane)/2])
@@ -66,11 +69,13 @@ def distance_to_plane(p, plane):
 
     p_ = p - p0
     dist_to_plane = np.dot(p_, n)
-    #p_normal = np.dot(p_, n) * n
-    #p_tangent = p_ - p_normal
+    p_normal = np.dot(p_, n) * n
+    p_tangent = p_ - p_normal
 
-    #closest_point = p_tangent + p0
-    #coords = np.linalg.lstsq(np.column_stack((u, v)), p_tangent)[0]
+    closest_point = p_tangent + p0
+    coords = np.linalg.lstsq(np.column_stack((u, v)), p_tangent)[0]
+
+    print "{}, {}, {}".format(dist_to_plane, closest_point, coords)
 
     return dist_to_plane
 
@@ -184,8 +189,9 @@ sp3.rotate(-90,1,0,0)
 sp3.setGLOptions('opaque')
 w2.addItem(sp3)
 
-sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,1.0,1.0,0.5)))
+sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,0.0,0.0,0.5)))
 sp4.scale(1,1,1)
+sp4.rotate(-90,1,0,0)
 sp4.setGLOptions('translucent')
 w2.addItem(sp4)
 
@@ -368,18 +374,11 @@ def update():
 
         #roi_cloud[cloud_mask] = cloud[cloud_mask]
         roi_colors[color_mask] = colors[color_mask]
-        #roi_depth = roi.copy()
-        #roi_depth = np.flipud(roi_depth)
-        #roi_color = np.flipud(roi_color)
-        
-        #roi_cloud, roi_colors = point_cloud(roi_depth, roi_color)
-        #x = roi_cloud[:,:,0].flatten()
-        #y = roi_cloud[:,:,1].flatten()
-        #z = roi_cloud[:,:,2].flatten()
 
-        roi_x = np.zeros_like(x)
-        roi_y = np.zeros_like(y)
-        roi_z = np.zeros_like(z)
+        roi_x = np.zeros_like(x) * np.nan
+        roi_y = np.zeros_like(y) * np.nan
+        roi_z = np.zeros_like(z) * np.nan
+
         roi_x[cloud_mask] = x[cloud_mask]
         roi_y[cloud_mask] = y[cloud_mask]
         roi_z[cloud_mask] = z[cloud_mask]
@@ -390,11 +389,18 @@ def update():
         roi_points[:, 1] = roi_y
         roi_points[:, 2] = roi_z 
 
-        v_scale = np.float32(v_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
-        v_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
-        size2 = v_scale + v_offset
+        v2_rate = 2.5
+        v2_scale = np.float32(v2_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
+        v2_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
+        size2 = v2_scale + v2_offset
 
-        sp3.setData(pos=roi_points, color=roi_colors, size=size2, pxMode=True) 
+        roi_data = np.c_[roi_x,roi_y,roi_z]
+        finite = np.isfinite(roi_data).all(axis=1)
+        roi_data = roi_data[finite]
+
+        roi_colors = roi_colors[finite]
+
+        sp3.setData(pos=roi_data, color=roi_colors, size=size2, pxMode=True) 
 
         calc_plane = True
         if not calc_plane:
@@ -403,59 +409,50 @@ def update():
             p1 = (bottom, right, roi_depth[bottom][right])
             p2 = (top, right, roi_depth[top][right])
         else: 
-            roi_data = np.c_[roi_x,roi_y,roi_z]
             # FIXME: outliers mess everything up
             #roi_data = reject_outliers(roi_data, 0.2)
 
-            #x = np.linspace(np.min(x), np.max(x), 20)
-            #y = np.linspace(np.min(y), np.max(y), 20)
-            mn = np.nanmin(roi_data, axis=0)
-            mx = np.nanmax(roi_data, axis=0)
+            #mn = np.min(roi_data, axis=0)
+            #mx = np.max(roi_data, axis=0)
             count = 20
-            #X = np.linspace(np.nanmin(roi_x), np.nanmax(roi_x), count)
-            #Y = np.linspace(np.nanmin(roi_y), np.nanmax(roi_y), count)
-            X, Y = np.meshgrid(np.linspace(mn[0], mx[0], count), np.linspace(mn[1], mx[1], count))
-            #X, Y = np.meshgrid(X, Y)
-            XX = X.flatten()
-            YY = Y.flatten()
+            X = np.linspace(np.min(roi_data[:,0]), np.max(roi_data[:,0]), count)
+            Y = np.linspace(np.min(roi_data[:,1]), np.max(roi_data[:,1]), count)
+            #X = np.linspace(mn[0], mx[0], count, endpoint=False)
+            #Y = np.linspace(mn[1], mx[1], count, endpoint=False)
+            #X, Y = np.meshgrid(np.linspace(mn[0], mx[0], count), np.linspace(mn[1], mx[1], count))
+            #XX, YY = np.meshgrid(X, Y)
+
+            # Best fit linear
+            A = np.c_[roi_data[:,0], roi_data[:,1], np.ones(roi_data.shape[0])]
+            C,_,_,_ = np.linalg.lstsq(A, roi_data[:,2])    # coefficients
+
+            # evaluate it on grid
+            #Z = C[0]*x_data.reshape(x_data.shape[0], 1) + C[1]*y_data.reshape(1, y_data.shape[0]) + C[2]
+            Z = C[0]*X.reshape(count, 1) + C[1]*Y.reshape(1, count) + C[2]
+            #Z = C[0]*(X[0].reshape(count, 1)) + C[1]*(Y[:,0].reshape(1, count)) + C[2]
+            #Z = C[0]*(roi_x.reshape(roi_x.shape[0], 1)) + C[1]*(roi_y.reshape(1, roi_y.shape[0])) + C[2]
+            print "z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4))
+
+            #z = C[0]*X + C[1]*Y + C[2]
+            z = C[0]*X + C[1]*Y + C[2]
             
-            order = 1
-            if order == 1:
-                # Best fit linear
-                A = np.c_[roi_data[:,0], roi_data[:,1], np.ones(roi_data.shape[0])]
-                C,_,_,_ = np.linalg.lstsq(A, roi_data[:,2])    # coefficients
+            #print "{}:{}, {}:{}".format(np.min(X), np.max(X), np.min(roi_data[:,0]), np.max(roi_data[:,0]))
+            #print "------------"
+            #print "{}:{}, {}:{}".format(np.min(Y), np.max(Y), np.min(roi_data[:,1]), np.max(roi_data[:,1]))
+            #print "------------"
+            #print "{}:{}, {}:{}".format(np.min(Z), np.max(Z), np.min(roi_data[:,2]), np.max(roi_data[:,2]))
 
-                # evaluate it on grid
-                #Z = C[0]*X + C[1]*Y + C[2]
-                #Z = C[0]*(X[0].reshape(count, 1)) + C[1]*(Y[:,0].reshape(1, count)) + C[2]
-                Z = C[0]*(roi_x.reshape(roi_x.shape[0], 1)) + C[1]*(roi_y.reshape(1, roi_y.shape[0])) + C[2]
-                print "z = {}x + {}y + {}".format(C[0], C[1], C[2])
+            sp4.setData(x=X, y=Y, z=Z)
 
-                #x = np.linspace(np.nanmin(x), np.nanmax(x), count)
-                #y = np.linspace(np.nanmin(y), np.nanmax(y), count)
-                #z = C[0]*x + C[1]*y + C[2]
+            plane = np.c_[X, Y, z]
+            if distPt is not None:
+                # FIXME: find nearest cluster of points to selection
+                pt = distPt
+                p = cloud[pt[1]][pt[0]]
+                distance = np.round(distance_to_plane(p, plane),4)
+                cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,75), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+                #print "Distance to Plane: {}".format(distance)
 
-                #z = C[0]*X + C[1]*Y + C[2]
-                z = C[0]*roi_x + C[1]*roi_y + C[2]
-
-                plane = np.c_[roi_x, roi_y, z]
-                if distPt is not None:
-                    # FIXME: find nearest cluster of points to selection
-                    pt = distPt
-                    #pt = (distPt[0], 480-distPt[1]) # flip y
-                    p = cloud[pt[1]][pt[0]] # because image is flipped
-                    print "{}   {}:{}, {}:{}".format(pt, top, bottom, left, right)
-                    distance = np.round(distance_to_plane(p, plane),4)
-                    cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,75), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-                    print "Distance to Plane: {}".format(distance)
-            elif order == 2:
-                # Best fit quadratic
-                A = np.c_[np.ones(roi_points.shape[0]), roi_points[:,:2], np.prod(roi_points[:,:2], axis=1), roi_points[:,:2]**2]
-                C,_,_,_ = scipy.linalg.lstsq(A, roi_points[:,2])
-
-                # evaluate it on a grid
-                Z = np.dot(np.c_[np.ones(XX.shape), XX, YY, XX*YY, XX**2, YY**2], C).reshape(X.shape)
-            sp4.setData(x=X[0], y=Y[:,0], z=Z)
 #    except Exception, e:
 #        print e
 
@@ -478,7 +475,7 @@ def update():
 
 t = QtCore.QTimer()
 t.timeout.connect(update)
-t.start(100)
+t.start(300)
 
 
 ## Start Qt event loop unless running in interactive mode.
