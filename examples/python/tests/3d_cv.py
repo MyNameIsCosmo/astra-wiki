@@ -1,6 +1,6 @@
 #!/usr/bin/python
 import cv2
-import scipy.linalg
+import math
 import numpy as np
 from openni import openni2
 from openni import _openni2 as c_api
@@ -31,10 +31,13 @@ dev.set_image_registration_mode(openni2.IMAGE_REGISTRATION_DEPTH_TO_COLOR)
 refPt = []
 distPt = None
 selecting = False
+calc_plane = True
 done = False
 mousex = 0
 mousey = 0
 drawing = False
+plane_first = None
+plane_second = None
 
 def reject_outliers(data, m = 2.):
     d = np.abs(data - np.nanmedian(data))
@@ -45,10 +48,14 @@ def reject_outliers(data, m = 2.):
 def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
-def distance_to_plane(p, plane):
+def distance_to_plane(p, plane_data):
+    plane, C = plane_data
+
     p0 = np.array(plane[0])
     p1 = np.array(plane[len(plane)/2])
     p2 = np.array(plane[-1])
+
+    print p, p0, p1, p2
 
     # These two vectors are in the plane
     v1 = p2 - p0
@@ -75,9 +82,26 @@ def distance_to_plane(p, plane):
     closest_point = p_tangent + p0
     coords = np.linalg.lstsq(np.column_stack((u, v)), p_tangent)[0]
 
-    print "{}, {}, {}".format(dist_to_plane, closest_point, coords)
+    #x = closest_point[0]
+    #y = closest_point[1]
+    x = p[0]
+    y = p[1]
+    #linear z_plane = C[0]*x + C[1]*y + C[2] 
+    z_plane = C[4]*x**2. + C[5]*y**2. + C[3]*x*y + C[1]*x + C[2]*y + C[0]
+    
+    pp = [x, y, z_plane]
 
-    return dist_to_plane
+    #dist_to_pp = math.sqrt((pp[0] - p[0]) ** 2 + (pp[1] - p[1]) ** 2 + (pp[2] - p[2]) ** 2)
+    dist_to_pp = np.linalg.norm(pp-p)
+    dist_to_pp = -dist_to_pp if pp[2] > p[2] else dist_to_pp
+
+    print p
+    print pp
+
+    print "{}, {}".format(dist_to_plane, dist_to_pp)
+
+    #return dist_to_plane
+    return dist_to_pp
 
 # Instrinsic calibration values guestimated.
 #  Perform OpenCV monocular camera calibration for accurate depth data
@@ -94,16 +118,16 @@ def point_cloud(image_depth,image_color=None, cx=328, cy=241, fx=586, fy=589, sc
     pointcloud = np.dstack((X, Y, Z)) * scale
 
     if image_color is not None:
-	colors = image_color.astype(np.float32)
-	colors = np.divide(colors, 255) # values must be between 0.0 - 1.0
-	colors = colors.reshape(colors.shape[0] * colors.shape[1], 3 ) # From: Rows X Cols X RGB -to- [[r,g,b],[r,g,b]...]
+        colors = image_color.astype(np.float32)
+        colors = np.divide(colors, 255) # values must be between 0.0 - 1.0
+        colors = colors.reshape(colors.shape[0] * colors.shape[1], 3 ) # From: Rows X Cols X RGB -to- [[r,g,b],[r,g,b]...]
         colors = colors[...,::-1]
 
     return pointcloud, colors
          
 
 def cv_mouse_event(event, x, y, flags, param):
-    global refPt, done, selecting, mousex, mousey, drawing, distPt
+    global refPt, done, selecting, mousex, mousey, drawing, distPt, calc_plane
     while drawing:
         continue
     if x > 640:
@@ -119,13 +143,15 @@ def cv_mouse_event(event, x, y, flags, param):
     """
     if event == cv2.EVENT_LBUTTONDOWN:
         #click
-        if done and len(refPt) < 3:
+        if done and len(refPt) < 2:
             refPt = []
+            distPt = None
+            calc_plane = False
             done = False
             return
         if len(refPt) == 0:
             selecting = True
-        if len(refPt) > 2 and done:
+        if len(refPt) > 1 and done:
             #point
             distPt = (x,y)
         else:
@@ -143,11 +169,13 @@ def cv_mouse_event(event, x, y, flags, param):
             else:
                 refPt = []
                 distPt = None
+                calc_plane = False
                 done = False
                 print "Need 3 or more points for polygon drawing!"
         else:
             refPt = []
             distPt = None
+            calc_plane = False
             done = False
 
 #QT app
@@ -177,7 +205,7 @@ w2.opts['distance'] = 1
 w2.opts['azimuth'] = -90
 w2.opts['elevation'] = 0
 w2.opts['fov'] = 65
-w2.opts['center'] = QtGui.QVector3D(0.0, 0.0, 0.0)
+w2.opts['center'] = QtGui.QVector3D(0.0, 1.0, 0.0)
 w2.show()
 g2 = gl.GLGridItem()
 
@@ -189,11 +217,17 @@ sp3.rotate(-90,1,0,0)
 sp3.setGLOptions('opaque')
 w2.addItem(sp3)
 
-sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,0.0,0.0,0.5)))
+sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((0.0,0.0,1.0,0.4)))
 sp4.scale(1,1,1)
 sp4.rotate(-90,1,0,0)
 sp4.setGLOptions('translucent')
 w2.addItem(sp4)
+
+sp5 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,0.0,0.0,0.4)))
+sp5.scale(1,1,1)
+sp5.rotate(-90,1,0,0)
+sp5.setGLOptions('translucent')
+w2.addItem(sp5)
 
 #def stats():
 # Initial OpenCV Window Functions
@@ -204,7 +238,19 @@ alpha = 0.5
 
 # Loop
 def update():
-    global alpha, distPt 
+    global alpha, distPt, calc_plane, plane_first, plane_second
+
+    if not calc_plane and not done:
+        calc_plane = True
+        plane_first = None
+        plane_second = None
+
+    '''
+    Grab a frame, select the plane
+    If the plane is selected, wait for key, then update frame and select the points
+    If points are selected, get depth point from image
+    '''
+
     # Grab a new depth frame
     depth_frame = depth_stream.read_frame()
     depth_frame_data = depth_frame.get_buffer_as_uint16()
@@ -244,85 +290,95 @@ def update():
 
     drawing = True
 
-    #try:
-    # click only
-    if len(refPt) == 1 and not selecting:
-        point = (refPt[0][0],refPt[0][1])
-        point_distance = float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)
-        print point_distance
-        cv2.circle(shape_img, refPt[0], 3, (0,0,255), 1)
-        cv2.putText(text_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-        cv2.putText(text_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-    # click+drag
-    if selecting and not done:
-        cv2.rectangle(shape_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
+    try:
+        # click only
+        if len(refPt) == 1 and not selecting:
+            point = (refPt[0][0],refPt[0][1])
+            point_distance = float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)
+            print point_distance
+            cv2.circle(shape_img, refPt[0], 3, (0,0,255), 1)
+            cv2.putText(text_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+        # click+drag
+        if selecting and not done:
+            cv2.rectangle(shape_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
 
-    if len(refPt) > 1 and done:
-        if len(refPt) == 2:
+        if len(refPt) > 1 and done:
+            if len(refPt) == 2:
+                mask = np.zeros((mask_img.shape[0], mask_img.shape[1]))
+                cv2.rectangle(mask, refPt[0], refPt[1], 1, thickness=-1)
+                mask = mask.astype(np.bool)
+
+                mask_img[mask] = color_img[mask]
+
+                cv2.rectangle(shape_img, refPt[0], refPt[1], (0, 255, 0), 2)
+                left = min(refPt[0][0],refPt[1][0])
+                top = min(refPt[0][1],refPt[1][1])
+                right = max(refPt[0][0],refPt[1][0])
+                bottom = max(refPt[0][1],refPt[1][1])
+
+                #print "{}:{} {}:{}".format(top, left, bottom, right)
+                roi = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+
+        # polygon
+        if len(refPt) > 1 and not done:
+            cv2.polylines(shape_img, np.array([refPt]), False, (255,0,0), 3)
+            cv2.line(shape_img, refPt[-1], (mousex, mousey), (0,255,0),3)
+
+        if len(refPt) > 2 and done:
+            cv2.polylines(shape_img, np.array([refPt]), True, (0,255,0), 3)
+
             mask = np.zeros((mask_img.shape[0], mask_img.shape[1]))
-            cv2.rectangle(mask, refPt[0], refPt[1], 1, thickness=-1)
+            points = np.array(refPt, dtype=np.int32)
+            cv2.fillConvexPoly(mask, points, 1)
             mask = mask.astype(np.bool)
 
             mask_img[mask] = color_img[mask]
 
-            cv2.rectangle(shape_img, refPt[0], refPt[1], (0, 255, 0), 2)
-            left = min(refPt[0][0],refPt[1][0])
-            top = min(refPt[0][1],refPt[1][1])
-            right = max(refPt[0][0],refPt[1][0])
-            bottom = max(refPt[0][1],refPt[1][1])
+            left, top = tuple(points.min(axis=0))
+            right, bottom = tuple(points.max(axis=0))
+
+            cv2.rectangle(shape_img, (left, top), (right, bottom), color=(255,0,0), thickness=3)
 
             #print "{}:{} {}:{}".format(top, left, bottom, right)
-            roi = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
-
-    # polygon
-    if len(refPt) > 1 and not done:
-        cv2.polylines(shape_img, np.array([refPt]), False, (255,0,0), 3)
-        cv2.line(shape_img, refPt[-1], (mousex, mousey), (0,255,0),3)
-
-    if len(refPt) > 2 and done:
-        cv2.polylines(shape_img, np.array([refPt]), True, (0,255,0), 3)
-
-        mask = np.zeros((mask_img.shape[0], mask_img.shape[1]))
-        points = np.array(refPt, dtype=np.int32)
-        cv2.fillConvexPoly(mask, points, 1)
-        mask = mask.astype(np.bool)
-
-        mask_img[mask] = color_img[mask]
-
-        left, top = tuple(points.min(axis=0))
-        right, bottom = tuple(points.max(axis=0))
-
-        cv2.rectangle(shape_img, (left, top), (right, bottom), color=(255,0,0), thickness=3)
-
-        #print "{}:{} {}:{}".format(top, left, bottom, right)
-        roi= depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+            roi= depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
 
 
-    # roi stats
-    if len(refPt) > 1 and done:
-        valid = (roi > 0) & (roi < 65536.0)
-        roi = np.where(valid, roi, np.nan)
+        # roi stats
+        if len(refPt) > 1 and done:
+            valid = (roi > 0) & (roi < 65536.0)
+            roi = np.where(valid, roi, np.nan)
 
-        roi_mean = np.round(np.nanmean(roi)/10000, 5)
-        roi_max = np.round(np.nanmax(roi)/10000, 5)
-        roi_min = np.round(np.nanmin(roi)/10000, 5)
-        roi_std = np.round(np.nanstd(roi)/10000, 5)
+            roi_mean = np.round(np.nanmean(roi)/10000, 5)
+            roi_max = np.round(np.nanmax(roi)/10000, 5)
+            roi_min = np.round(np.nanmin(roi)/10000, 5)
+            roi_std = np.round(np.nanstd(roi)/10000, 5)
 
-        #cv2.rectangle(color_img, (5,5), (250,65), (50, 50, 50, 0), -1)
-        cv2.putText(text_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-        cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-        cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-        cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-        print "Mean of ROI: ", roi_mean
-        print "Max of ROI: ", roi_max
-        print "Min of ROI: ", roi_min
-        print "Standard Deviation of ROI: ", roi_std
+            #cv2.rectangle(color_img, (5,5), (250,65), (50, 50, 50, 0), -1)
+            cv2.putText(text_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            print "Mean of ROI: ", roi_mean
+            print "Max of ROI: ", roi_max
+            print "Min of ROI: ", roi_min
+            print "Standard Deviation of ROI: ", roi_std
 
-    if distPt is not None:
-        cv2.circle(shape_img, distPt, 3, (0,0,255), 1)
+        if distPt is not None:
+            cv2.circle(shape_img, distPt, 3, (0,0,255), 1)
 
-    #except Exception, e:
-    #    print e
+        if plane_first is not None:
+            C = np.round(plane_first[1],4)
+            text_plane = '1 z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])
+            cv2.putText(text_img, text_plane, (10, 75), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+
+        if plane_second is not None:
+            C = np.round(plane_second[1],4)
+            text_plane = '2 z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])
+            cv2.putText(text_img, text_plane, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+
+    except Exception, e:
+        print e
 
 
     drawing = False
@@ -362,99 +418,123 @@ def update():
     pos[:, 1] = y
     pos[:, 2] = z
 
-#    try:
-    if len(refPt) > 1 and done:
-        #roi_color = color_img[top:bottom,left:right] # because the image is 480x640 not 640x480
+    try:
+        if len(refPt) > 1 and done:
+            #roi_color = color_img[top:bottom,left:right] # because the image is 480x640 not 640x480
 
-        roi_cloud = np.zeros_like(cloud)
-        roi_colors = np.zeros_like(colors)
+            roi_cloud = np.zeros_like(cloud)
+            roi_colors = np.zeros_like(colors)
 
-        cloud_mask = mask.flatten()
-        color_mask = cloud_mask
+            cloud_mask = mask.flatten()
+            color_mask = cloud_mask
 
-        #roi_cloud[cloud_mask] = cloud[cloud_mask]
-        roi_colors[color_mask] = colors[color_mask]
+            #roi_cloud[cloud_mask] = cloud[cloud_mask]
+            roi_colors[color_mask] = colors[color_mask]
 
-        roi_x = np.zeros_like(x) * np.nan
-        roi_y = np.zeros_like(y) * np.nan
-        roi_z = np.zeros_like(z) * np.nan
+            roi_x = np.zeros_like(x) * np.nan
+            roi_y = np.zeros_like(y) * np.nan
+            roi_z = np.zeros_like(z) * np.nan
 
-        roi_x[cloud_mask] = x[cloud_mask]
-        roi_y[cloud_mask] = y[cloud_mask]
-        roi_z[cloud_mask] = z[cloud_mask]
+            roi_x[cloud_mask] = x[cloud_mask]
+            roi_y[cloud_mask] = y[cloud_mask]
+            roi_z[cloud_mask] = z[cloud_mask]
 
-        N = max(x.shape)
-        roi_points = np.empty((N,3))
-        roi_points[:, 0] = roi_x
-        roi_points[:, 1] = roi_y
-        roi_points[:, 2] = roi_z 
+            N = max(x.shape)
+            roi_points = np.empty((N,3))
+            roi_points[:, 0] = roi_x
+            roi_points[:, 1] = roi_y
+            roi_points[:, 2] = roi_z 
 
-        v2_rate = 2.5
-        v2_scale = np.float32(v2_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
-        v2_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
-        size2 = v2_scale + v2_offset
+            v2_rate = 2.5
+            v2_scale = np.float32(v2_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
+            v2_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
+            size2 = v2_scale + v2_offset
 
-        roi_data = np.c_[roi_x,roi_y,roi_z]
-        finite = np.isfinite(roi_data).all(axis=1)
-        roi_data = roi_data[finite]
+            roi_data = np.c_[roi_x,roi_y,roi_z]
+            finite = np.isfinite(roi_data).all(axis=1)
+            roi_data = roi_data[finite]
 
-        roi_colors = roi_colors[finite]
+            roi_colors = roi_colors[finite]
 
-        sp3.setData(pos=roi_data, color=roi_colors, size=size2, pxMode=True) 
+            sp3.setData(pos=roi_data, color=roi_colors, size=size2, pxMode=True) 
 
-        calc_plane = True
-        if not calc_plane:
-            # CANT DO THIS IF DEPTH POINT IS NAN
-            p0 = (top, left, roi_depth[top][left])
-            p1 = (bottom, right, roi_depth[bottom][right])
-            p2 = (top, right, roi_depth[top][right])
-        else: 
+            plane = None
+
             # FIXME: outliers mess everything up
             #roi_data = reject_outliers(roi_data, 0.2)
 
-            #mn = np.min(roi_data, axis=0)
-            #mx = np.max(roi_data, axis=0)
-            count = 20
+            count = 50
             X = np.linspace(np.min(roi_data[:,0]), np.max(roi_data[:,0]), count)
             Y = np.linspace(np.min(roi_data[:,1]), np.max(roi_data[:,1]), count)
-            #X = np.linspace(mn[0], mx[0], count, endpoint=False)
-            #Y = np.linspace(mn[1], mx[1], count, endpoint=False)
-            #X, Y = np.meshgrid(np.linspace(mn[0], mx[0], count), np.linspace(mn[1], mx[1], count))
-            #XX, YY = np.meshgrid(X, Y)
+            Xx = X.reshape(count, 1)
+            Yy = Y.reshape(1, count)
 
-            # Best fit linear
-            A = np.c_[roi_data[:,0], roi_data[:,1], np.ones(roi_data.shape[0])]
-            C,_,_,_ = np.linalg.lstsq(A, roi_data[:,2])    # coefficients
+            calc = 2
+            if calc == 1: #linear plane
+                A = np.c_[roi_data[:,0], roi_data[:,1], np.ones(roi_data.shape[0])]
+                C,_,_,_ = np.linalg.lstsq(A, roi_data[:,2])    # coefficients
 
-            # evaluate it on grid
-            #Z = C[0]*x_data.reshape(x_data.shape[0], 1) + C[1]*y_data.reshape(1, y_data.shape[0]) + C[2]
-            Z = C[0]*X.reshape(count, 1) + C[1]*Y.reshape(1, count) + C[2]
-            #Z = C[0]*(X[0].reshape(count, 1)) + C[1]*(Y[:,0].reshape(1, count)) + C[2]
-            #Z = C[0]*(roi_x.reshape(roi_x.shape[0], 1)) + C[1]*(roi_y.reshape(1, roi_y.shape[0])) + C[2]
-            print "z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4))
+                # evaluate it on grid
+                Z = C[0]*Xx + C[1]*Yy + C[2]
+                print "z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4))
 
-            #z = C[0]*X + C[1]*Y + C[2]
-            z = C[0]*X + C[1]*Y + C[2]
+                z = C[0]*X + C[1]*Y + C[2]
+                plane = (np.c_[X, Y, z], C)
+            elif calc == 2: #quadratic plane
+                A = np.c_[np.ones(roi_data.shape[0]), roi_data[:,:2], np.prod(roi_data[:,:2], axis=1), roi_data[:,:2]**2]
+                C,_,_,_ = np.linalg.lstsq(A, roi_data[:,2])    # coefficients
+
+                # evaluate it on grid
+                Z = C[4]*Xx**2. + C[5]*Yy**2. + C[3]*Xx*Yy + C[1]*Xx + C[2]*Yy + C[0]
+                print('z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0]))
+
+                z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
+                plane = (np.c_[X, Y, z], C)
+            elif calc == 3: #lineplot
+                # FIXME: This is not efficient, also want to update these line plots in real time to visualize deflection
+                #for i in range(count):
+                '''
+                Loop through n segments with m resolution
+                    take std of points from line to determine colors
+                '''
+                print "Meh"
+                #y_resolution = 20
+                #Y = np.linspace(np.min(roi_data[:,1]), np.max(roi_data[:,1]), y_resolution)
+                #for i in range(y_resolution):
+                    #x = roi_data[:,0]
+                    #pts = np.vstack([x,yi,z]).transpose()
+                    #sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
+
             
-            #print "{}:{}, {}:{}".format(np.min(X), np.max(X), np.min(roi_data[:,0]), np.max(roi_data[:,0]))
-            #print "------------"
-            #print "{}:{}, {}:{}".format(np.min(Y), np.max(Y), np.min(roi_data[:,1]), np.max(roi_data[:,1]))
-            #print "------------"
-            #print "{}:{}, {}:{}".format(np.min(Z), np.max(Z), np.min(roi_data[:,2]), np.max(roi_data[:,2]))
+            if calc < 3:
+                if calc_plane:
+                    sp4.setData(x=X, y=Y, z=Z)
+                else:
+                    sp5.setData(x=X, y=Y, z=Z)
 
-            sp4.setData(x=X, y=Y, z=Z)
+            if calc_plane:
+                plane_first = plane
+            else:
+                plane_second = plane
+            calc_plane = False
 
-            plane = np.c_[X, Y, z]
-            if distPt is not None:
+            if distPt is not None and not calc_plane:
+            
+                distance = "NaN"
+                #if distPt[1] > top and distPt[1] < bottom:
+                #    if distPt[0] < right and distPt[0] > left:
                 # FIXME: find nearest cluster of points to selection
                 pt = distPt
                 p = cloud[pt[1]][pt[0]]
-                distance = np.round(distance_to_plane(p, plane),4)
-                cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,75), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+                #p = openni2.convert_depth_to_world(depth_stream, pt[0], pt[1], depth_image[pt[0]][pt[1]])
+                #p = (p[0]/1000, p[1]/1000, p[2]/1000)
+                distance = np.round(distance_to_plane(p, plane_first),4)
+                cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,105), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
                 #print "Distance to Plane: {}".format(distance)
 
-#    except Exception, e:
-#        print e
+
+    except Exception, e:
+        print e
 
     cv2.addWeighted(text_img, 1, color_img, 1, 0, color_img)
 
@@ -475,7 +555,7 @@ def update():
 
 t = QtCore.QTimer()
 t.timeout.connect(update)
-t.start(300)
+t.start(150)
 
 
 ## Start Qt event loop unless running in interactive mode.
