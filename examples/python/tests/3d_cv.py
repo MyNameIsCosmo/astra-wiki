@@ -55,7 +55,7 @@ def distance_to_plane(p, plane_data):
     p1 = np.array(plane[len(plane)/2])
     p2 = np.array(plane[-1])
 
-    print p, p0, p1, p2
+    print(p, p0, p1, p2)
 
     # These two vectors are in the plane
     v1 = p2 - p0
@@ -95,10 +95,10 @@ def distance_to_plane(p, plane_data):
     dist_to_pp = np.linalg.norm(pp-p)
     dist_to_pp = -dist_to_pp if pp[2] > p[2] else dist_to_pp
 
-    print p
-    print pp
+    print(p)
+    print(pp)
 
-    print "{}, {}".format(dist_to_plane, dist_to_pp)
+    print("{}, {}".format(dist_to_plane, dist_to_pp))
 
     #return dist_to_plane
     return dist_to_pp
@@ -171,7 +171,7 @@ def cv_mouse_event(event, x, y, flags, param):
                 distPt = None
                 calc_plane = False
                 done = False
-                print "Need 3 or more points for polygon drawing!"
+                print("Need 3 or more points for polygon drawing!")
         else:
             refPt = []
             distPt = None
@@ -295,7 +295,7 @@ def update():
         if len(refPt) == 1 and not selecting:
             point = (refPt[0][0],refPt[0][1])
             point_distance = float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)
-            print point_distance
+            print(point_distance)
             cv2.circle(shape_img, refPt[0], 3, (0,0,255), 1)
             cv2.putText(text_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
             cv2.putText(text_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
@@ -359,10 +359,10 @@ def update():
             cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
             cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
             cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-            print "Mean of ROI: ", roi_mean
-            print "Max of ROI: ", roi_max
-            print "Min of ROI: ", roi_min
-            print "Standard Deviation of ROI: ", roi_std
+            print("Mean of ROI: ", roi_mean)
+            print("Max of ROI: ", roi_max)
+            print("Min of ROI: ", roi_min)
+            print("Standard Deviation of ROI: ", roi_std)
 
         if distPt is not None:
             cv2.circle(shape_img, distPt, 3, (0,0,255), 1)
@@ -377,8 +377,8 @@ def update():
             text_plane = '2 z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])
             cv2.putText(text_img, text_plane, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
 
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
 
     drawing = False
@@ -476,7 +476,7 @@ def update():
 
                 # evaluate it on grid
                 Z = C[0]*Xx + C[1]*Yy + C[2]
-                print "z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4))
+                print("z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4)))
 
                 z = C[0]*X + C[1]*Y + C[2]
                 plane = (np.c_[X, Y, z], C)
@@ -486,7 +486,7 @@ def update():
 
                 # evaluate it on grid
                 Z = C[4]*Xx**2. + C[5]*Yy**2. + C[3]*Xx*Yy + C[1]*Xx + C[2]*Yy + C[0]
-                print('z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0]))
+                print(('z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])))
 
                 z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
                 plane = (np.c_[X, Y, z], C)
@@ -497,14 +497,24 @@ def update():
                 Loop through n segments with m resolution
                     take std of points from line to determine colors
                 '''
-                print "Meh"
-                #y_resolution = 20
-                #Y = np.linspace(np.min(roi_data[:,1]), np.max(roi_data[:,1]), y_resolution)
-                #for i in range(y_resolution):
-                    #x = roi_data[:,0]
-                    #pts = np.vstack([x,yi,z]).transpose()
-                    #sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
+                print("Meh")
+                print np.min(roi_data[:,1]), np.max(roi_data[:,1])
+                print np.round(roi_data[:,1],3)
+                print len(roi_data[:,1])
+                print len(np.unique(np.round(roi_data[:,1],3)))
+                roi_x = roi_data[:,0]
+                roi_y = np.round(roi_data[:,1],3)
+                roi_z = roi_data[:,2]
 
+                valid = (depth > 0) & (depth < 65536.0)
+                Z = np.where(valid, depth, np.nan)
+                X = np.where(valid, (Z * (c - cx)) / fx, 0)
+                y_resolution = 20
+                y = np.linspace(np.min(roi_y), np.max(roi_y), y_resolution)
+                for i in range(y_resolution):
+                    x = roi_data[:,0]
+                    pts = np.vstack([x,yi,z]).transpose()
+                    sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
             
             if calc < 3:
                 if calc_plane:
@@ -533,8 +543,8 @@ def update():
                 #print "Distance to Plane: {}".format(distance)
 
 
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
 
     cv2.addWeighted(text_img, 1, color_img, 1, 0, color_img)
 

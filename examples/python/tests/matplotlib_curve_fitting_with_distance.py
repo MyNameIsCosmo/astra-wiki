@@ -95,8 +95,6 @@ mean = np.array([0.0,0.0,0.0])
 cov = np.array([[1.0,-0.5,0.8], [-0.5,1.1,0.0], [0.8,0.0,1.0]])
 data = np.random.multivariate_normal(mean, cov, 8)
 
-print data
-print np.meshgrid(data[:,0], data[:,1], data[:,2])
 
 # some 3-dim points
 #x = [1.2, 1.3, 1.6, 2.5, 2.3, 2.8]
