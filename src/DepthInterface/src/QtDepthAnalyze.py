@@ -1,4 +1,3 @@
-from pyqtgraph.Qt import QtCore, QtGui
 from .Common import *
 from .QtCV import *
 from .QtPointCloud import *

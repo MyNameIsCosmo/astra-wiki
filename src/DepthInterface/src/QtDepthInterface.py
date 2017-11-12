@@ -6,7 +6,6 @@ TODO:
     Pop-up for camera properties
 '''
 
-import sys
 from .Common import *
 from .Device import *
 from .QtDeviceSelection import *
@@ -14,7 +13,6 @@ from .QtDeviceViewer import *
 from .QtCV import *
 from .QtPointCloud import *
 
-from pyqtgraph.Qt import QtCore, QtGui
 
 class DepthInterface(QtGui.QMainWindow):
 
@@ -50,11 +48,19 @@ class DepthInterface(QtGui.QMainWindow):
         exitButton = QtGui.QAction(QtGui.QIcon(), 'Exit', self)
         exitButton.setShortcut("Ctrl+Q")
         exitButton.setStatusTip("Exit Application")
-        exitButton.triggered.connect(self.close)
+        exitButton.triggered.connect(self._close)
         self.fileMenu.addAction(exitButton)
 
-    def _destruct(self):
-        logger.debug('Destruction TODO')
+    def _close(self, *args):
+        if QtGui.QMessageBox.question(None, '', "Are you sure you want to quit?",
+                                QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
+                                QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
+            self._destruct(args)
+    
+    def _destruct(self, *args):
+        self.close()
+        openni2.unload()
+        QtGui.QApplication.quit()
 
     def _set_window_size(self, width=800, height=600, resizable=False):
         self.resize(width, height)
@@ -74,7 +80,7 @@ class DepthInterface(QtGui.QMainWindow):
             name = cls.objectName()
         tab = self.tabWidget.addTab(cls, name)
         if tooltip:
-            self.tabWidget.setTabToolTip(tab, tooltip)
+            self.tabWidget.setTabToolTip(tab, str(tooltip, 'ascii'))
         if not closable:
             self.tabWidget.tabBar().setTabButton(tab, QtGui.QTabBar.RightSide,None)
         if icon:

@@ -1,4 +1,3 @@
-from pyqtgraph.Qt import QtCore, QtGui
 from .Device import *
 from .Common import *
 from .QtDeviceViewer import *
@@ -49,7 +48,10 @@ class DeviceSelection(QtGui.QWidget):
         self.devices = openni_list()
         if len(self.devices) > 0:
             for d in self.devices:
-                item = QtGui.QListWidgetItem("{} {}: {}".format(d[1], d[2], str(d[0])))
+                make = str(d[1], 'ascii')
+                model = str(d[2], 'ascii')
+                uri = str(d[0], 'ascii')
+                item = QtGui.QListWidgetItem("{} {}: {}".format(make, model, uri))
                 self.deviceList.addItem(item)
         else:
             item = QtGui.QListWidgetItem("No Devices Detected!")
@@ -57,8 +59,8 @@ class DeviceSelection(QtGui.QWidget):
 
     def _device_list_clicked(self, index):
         device = self.devices[index.row()]
-        tabToolTips = [unicode(self.parent_.tabWidget.tabToolTip(t)) for t in range(self.parent_.tabWidget.count())]
-        uri = unicode(device[0])
+        tabToolTips = [self.parent_.tabWidget.tabToolTip(t) for t in range(self.parent_.tabWidget.count())]
+        uri = device[0]
         if uri in tabToolTips:
             logger.debug("{} already open!".format(device[0]))
             self.parent_.statusBar().showMessage("{} already open in tab #{}".format(uri, tabToolTips.index(uri))) 

@@ -1,8 +1,4 @@
-import cv2
-import numpy as np
-
 from .Common import *
-from pyqtgraph.Qt import QtCore, QtGui
 
 class CvToQImage(QtGui.QImage):
 

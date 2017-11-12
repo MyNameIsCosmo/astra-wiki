@@ -1,6 +1,4 @@
 from .Common import *
-from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.opengl as gl
 
 
 class PointCloudViewer(gl.GLViewWidget):

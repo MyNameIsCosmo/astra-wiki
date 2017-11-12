@@ -1,5 +1,3 @@
-from pyqtgraph.Qt import QtCore, QtGui
-import pyqtgraph.opengl as gl
 from .Device import *
 from .Common import *
 from .QtCV import *
@@ -12,7 +10,10 @@ class DeviceViewer(QtGui.QWidget):
         super(QtGui.QWidget, self).__init__(parent)
         self.destroyed.connect(self._destroy)
         self.parent_ = parent
-        self.uri, self.make, self.model = device
+        self.uri = device[0]
+        self.make = str(device[1], 'ascii')
+        self.model = str(device[2], 'ascii')
+        #self.uri, self.make, self.model = device
         self.setObjectName("{} {}".format(self.make, self.model))
 
         self.__widgets()

@@ -1,8 +1,4 @@
 #!/usr/bin/python
-import ctypes
-import numpy as np
-from openni import openni2
-from openni import _openni2 as c_api
 
 from .Common import *
 
@@ -223,8 +219,6 @@ class OpenNIDevice(openni2.Device):
 
 if __name__ == "__main__":
     device = OpenNIDevice()
-
-    import cv2
 
     # FIXME: IR doesn't work?
     
