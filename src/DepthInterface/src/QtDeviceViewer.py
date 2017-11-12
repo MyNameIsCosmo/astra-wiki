@@ -1,13 +1,10 @@
-import cv2
-import numpy as np
-
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 from .Device import *
 from .Common import *
 from .QtCV import *
 from .QtPointCloud import *
-
+from .QtDepthAnalyze import *
 
 class DeviceViewer(QtGui.QWidget):
 
@@ -27,7 +24,7 @@ class DeviceViewer(QtGui.QWidget):
         self.tab_main = QtGui.QTabWidget()
         self.widget_images = QtGui.QWidget()
         #self.widget_info = QtGui.QWidget()
-        #self.widget_analyze = QtGui.QWidget()
+        self.widget_analyze = DepthAnalyze()
         #self.tab_images = QtGui.QTabWidget()
         #self.tab_point_cloud = QtGui.QTabWidget()
 
@@ -40,14 +37,12 @@ class DeviceViewer(QtGui.QWidget):
         self.widget_point_cloud = PointCloudViewer(self)
 
         self.label_info = QtGui.QLabel("Work in progress")
-        self.label_analyze = QtGui.QLabel("Work in progress")
 
         self.widget_image_color.setObjectName("Color")
         self.widget_image_depth.setObjectName("Depth")
         self.widget_point_cloud.setObjectName("Points")
         self.widget_images.setObjectName("Stream")
         self.label_info.setObjectName("Info")
-        self.label_analyze.setObjectName("Deflection")
 
         self.widget_point_cloud.setMinimumHeight(200)
 
@@ -63,7 +58,7 @@ class DeviceViewer(QtGui.QWidget):
 
         self._add_tab(self.tab_main, self.widget_images)
         self._add_tab(self.tab_main, self.widget_point_cloud)
-        self._add_tab(self.tab_main, self.label_analyze)
+        self._add_tab(self.tab_main, self.widget_analyze)
         self._add_tab(self.tab_main, self.label_info)
 
         self.vbox.addWidget(self.tab_main, 0, QtCore.Qt.AlignTop)
@@ -76,18 +71,24 @@ class DeviceViewer(QtGui.QWidget):
             self.device.stop()
     
     def _update_images(self):
+        # TODO: Have widgets pull 
         image_color = self.device.get_frame_color()
         image_depth = self.device.get_frame_depth()
 
-        image_depth = cv2.convertScaleAbs(image_depth, alpha=(255.0/65535.0))
 
         image_color = np.fliplr(image_color)
         image_depth = np.fliplr(image_depth)
 
+        self.widget_point_cloud.update_plot(image_depth, image_color)
+
+        # this needs to be done AFTER point cloud update
+        image_depth = cv2.convertScaleAbs(image_depth, alpha=(255.0/65535.0))
+
         self.widget_image_color.update(image_color)
         self.widget_image_depth.update(image_depth, mapping=QtGui.QImage.Format_Indexed8)
 
-        self.widget_point_cloud.update_plot(image_depth, image_color)
+
+        self.widget_analyze.update_images(image_depth, image_color)
 
     def _init_device(self, uri):
         self.device = OpenNIDevice(uri)

@@ -79,7 +79,7 @@ class DepthInterface(QtGui.QMainWindow):
             self.tabWidget.tabBar().setTabButton(tab, QtGui.QTabBar.RightSide,None)
         if icon:
             self.tabWidget.setTabIcon(icon)
-	self.tabWidget.setCurrentIndex(tab)
+        self.tabWidget.setCurrentIndex(tab)
 
     def show_device_list(self):
         device_list = DeviceSelection(self)

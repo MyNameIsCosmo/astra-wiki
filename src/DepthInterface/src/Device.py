@@ -74,6 +74,7 @@ def openni_list():
     return devices
 
 class OpenNIStream(openni2.VideoStream):
+    #TODO: Handle different cameras (Kinect vs Astra)
     def __init__(self, device, sensor_type):
         openni2.VideoStream.__init__(self, device, sensor_type)
         self.active = False
@@ -85,7 +86,7 @@ class OpenNIStream(openni2.VideoStream):
         self.frame = None
         self.frame_data = None
 
-    def setVideoMode(self, x, y, fps, pixelFormat):
+    def _set_video_mode(self, x, y, fps, pixelFormat):
         self.x = x
         self.y = y
         self.fps = fps
@@ -175,20 +176,20 @@ class OpenNIDevice(openni2.Device):
             if self.stream[stream_name].active:
                 logger.error("{} stream already active!".format(stream_name))
             self.stream[stream_name].start()
-            self.stream[stream_name].setVideoMode(x, y, fps, pixelFormat)
+            self.stream[stream_name]._set_video_mode(x, y, fps, pixelFormat)
             self.stream[stream_name].active = True
         except Exception as e:
             logger.error('Failed to open stream', exc_info=True)
             return False
         return True
 
-    def open_stream_color(self, x=640, y=480, fps=30, pixelFormat = openni2.PIXEL_FORMAT_RGB888):
+    def open_stream_color(self, x=640, y=480, fps=30, pixelFormat=openni2.PIXEL_FORMAT_RGB888):
         return self.open_stream(openni2.SENSOR_COLOR, x, y, fps, pixelFormat)
 
-    def open_stream_depth(self, x=640, y=480, fps=30, pixelFormat = openni2.PIXEL_FORMAT_DEPTH_100_UM):
+    def open_stream_depth(self, x=640, y=480, fps=30, pixelFormat=openni2.PIXEL_FORMAT_DEPTH_100_UM):
         return self.open_stream(openni2.SENSOR_DEPTH, x, y, fps, pixelFormat)
         
-    def open_stream_ir(self, x=640, y=480, fps=30, pixelFormat = openni2.PIXEL_FORMAT_GRAY16):
+    def open_stream_ir(self, x=640, y=480, fps=30, pixelFormat=openni2.PIXEL_FORMAT_GRAY16):
         return self.open_stream(openni2.SENSOR_IR, x, y, fps, pixelFormat)
 
     def get_frame(self, stream_type):

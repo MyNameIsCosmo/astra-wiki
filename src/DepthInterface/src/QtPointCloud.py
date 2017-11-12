@@ -1,8 +1,7 @@
-import numpy as np
+from .Common import *
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
-from .Common import *
 
 class PointCloudViewer(gl.GLViewWidget):
 
@@ -32,7 +31,7 @@ class PointCloudViewer(gl.GLViewWidget):
         self.addItem(self.grid)
         self.addItem(self.scatterPlot)
 
-    def _depth_image_to_point_cloud(self, image_depth, image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.1):
+    def _depth_image_to_point_cloud(self, image_depth, image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.0001):
         #FIXME: scale appropriately to depth_image size, 1mm or 100um
         pointcloud = np.zeros((1,1))
         colors = ((1.0, 1.0, 1.0, 1.0))
@@ -64,7 +63,7 @@ class PointCloudViewer(gl.GLViewWidget):
 
         if size is None:
             # Calculate a dynamic vertex size based on window dimensions and camera's position - To become the "size" input for the scatterplot's setData() function.
-            v_rate = 5.0 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
+            v_rate = 2.5 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
             v_scale = np.float32(v_rate) / self.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
             v_offset = (self.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
             size = v_scale + v_offset

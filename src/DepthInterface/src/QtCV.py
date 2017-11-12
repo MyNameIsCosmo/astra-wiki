@@ -22,13 +22,8 @@ class ImageView(QtGui.QLabel):
         self.parent_ = parent
         self._image = None
 
-    def mousePressEvent(self, QMouseEvent):
-        logger.info(QMouseEvent.pos())
 
-    def mouseReleaseEvent(self, QMouseEvent):
-        logger.info(QMouseEvent.pos())
-
-    def _updateFrame(self, img, height=640, width=480, pixmap=False):
+    def _update_frame(self, img, height=640, width=480, pixmap=False):
         self._image = img
         if self._image is not None:
             if pixmap:
@@ -42,5 +37,5 @@ class ImageView(QtGui.QLabel):
             self.setPixmap(_image_pixmap)
 
     def update(self, image, mapping=QtGui.QImage.Format_RGB888):
-	self._updateFrame(CvToQImage(image, mapping=mapping))
+        self._update_frame(CvToQImage(image, mapping=mapping))
 

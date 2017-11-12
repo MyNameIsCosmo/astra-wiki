@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 import os
 import time
 import logging
@@ -26,6 +28,14 @@ logging_config = dict(
         },
     loggers = {
         'OpenGL.GL.shaders': {
+            'level': logging.ERROR,
+            'handlers': ['console'],
+            'propogate': False},
+        'OpenGL.formathandler': {
+            'level': logging.ERROR,
+            'handlers': ['console'],
+            'propogate': False},
+        'OpenGL.extensions': {
             'level': logging.ERROR,
             'handlers': ['console'],
             'propogate': False}
