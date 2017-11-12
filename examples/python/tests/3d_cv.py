@@ -1,7 +1,43 @@
 #!/usr/bin/python
+#######################################################################
+#
+# 3D plane deflection program
+#
+# Use left mouse click to define an existing flat plane, right click
+# to finish definition
+#
+# Left click on a point to determine height from original plane.
+#
+#
+#
+# Version                Notes
+#
+# 20171109                Original setup
+# 20171110                Grid, write to csv
+#
+#
+#######################################################################
+
+'''
+Preferred Conda Environment Creation:
+    conda create -n py35 python=3.5 anaconda
+    source activate py35
+    conda install pyqtgraph
+    conda install pyopengl
+    conda install pyopengl-accelerate 
+'''
+
+# Version ID for sanity
+sVersionID="20171110"
+
 import cv2
+import sys
 import math
-import numpy as np
+import pathlib
+import time
+import datetime
+import csv
+import numpy as np 
 from openni import openni2
 from openni import _openni2 as c_api
 
@@ -14,6 +50,12 @@ import pyqtgraph.opengl as gl
 # Initialize the depth device
 openni2.initialize()
 dev = openni2.Device.open_any()
+
+# Global for grabbing images
+dump_depth_image=0
+# color is in bgr format
+textcolor=(0,0,255)
+
 
 # Start the depth stream
 depth_stream = dev.create_depth_stream()
@@ -30,8 +72,12 @@ dev.set_image_registration_mode(openni2.IMAGE_REGISTRATION_DEPTH_TO_COLOR)
 # Function to return some pixel information when the OpenCV window is clicked
 refPt = []
 distPt = None
+mgrid_dist = True
+mgrid_count = (5,5) # for a 5x5 grid
 selecting = False
 calc_plane = True
+calc_grid = False
+dump_csv = False
 done = False
 mousex = 0
 mousey = 0
@@ -39,23 +85,29 @@ drawing = False
 plane_first = None
 plane_second = None
 
+d = time.strftime("%m-%d-%y")
+tm = time.strftime("%H-%M-%S")
+foldername = "./{}/{}".format(d,tm)
+
 def reject_outliers(data, m = 2.):
+#######################################################################
     d = np.abs(data - np.nanmedian(data))
     mdev = np.nanmedian(d)
     s = d/(mdev if mdev else 1.)
     return data[s<m]
 
 def nan_helper(y):
+#######################################################################
     return np.isnan(y), lambda z: z.nonzero()[0]
 
+
 def distance_to_plane(p, plane_data):
+#######################################################################
     plane, C = plane_data
 
     p0 = np.array(plane[0])
-    p1 = np.array(plane[len(plane)/2])
+    p1 = np.array(plane[int(len(plane)/2)])
     p2 = np.array(plane[-1])
-
-    print(p, p0, p1, p2)
 
     # These two vectors are in the plane
     v1 = p2 - p0
@@ -95,17 +147,13 @@ def distance_to_plane(p, plane_data):
     dist_to_pp = np.linalg.norm(pp-p)
     dist_to_pp = -dist_to_pp if pp[2] > p[2] else dist_to_pp
 
-    print(p)
-    print(pp)
-
-    print("{}, {}".format(dist_to_plane, dist_to_pp))
-
     #return dist_to_plane
     return dist_to_pp
 
 # Instrinsic calibration values guestimated.
 #  Perform OpenCV monocular camera calibration for accurate depth data
 def point_cloud(image_depth,image_color=None, cx=328, cy=241, fx=586, fy=589, scale=0.0001):
+#######################################################################
     pointcloud = np.zeros((1,1))
     colors = ((1.0, 1.0, 1.0, 1.0))
     depth = image_depth.astype(np.float32)
@@ -127,7 +175,9 @@ def point_cloud(image_depth,image_color=None, cx=328, cy=241, fx=586, fy=589, sc
          
 
 def cv_mouse_event(event, x, y, flags, param):
-    global refPt, done, selecting, mousex, mousey, drawing, distPt, calc_plane
+#######################################################################
+    global refPt, done, selecting, mousex, mousey, drawing, distPt, calc_plane, mgrid_dist, calc_grid
+    global dump_depth_image, dump_csv
     while drawing:
         continue
     if x > 640:
@@ -148,35 +198,74 @@ def cv_mouse_event(event, x, y, flags, param):
             distPt = None
             calc_plane = False
             done = False
+            dump_csv = False
             return
         if len(refPt) == 0:
             selecting = True
-        if len(refPt) > 1 and done:
-            #point
-            distPt = (x,y)
+        if len(refPt) > 1 and done and not mgrid_dist:
+            if distPt is None:
+                distPt = []
+            distPt.append((x,y))
+            dump_csv = True
         else:
             refPt.append((x,y))
     elif event == cv2.EVENT_LBUTTONUP:
         # click+drag
-        if (refPt[0] != (x,y) and selecting):
+        if ((refPt[0][0] != x) and (refPt[0][1] != y) and selecting):
             refPt.append((x,y))
+            print("Done, saving image.")
+            dump_depth_image=1
             done = True
+            calc_grid=True
+            if mgrid_dist:
+                dump_csv=True
         selecting = False
     elif event == cv2.EVENT_RBUTTONDOWN:
         if not done:
             if len(refPt) > 2:
+                print("Done, saving image.")
+                dump_depth_image=1
                 done = True
+                calc_grid=True
+                if mgrid_dist:
+                    dump_csv=True
             else:
                 refPt = []
                 distPt = None
                 calc_plane = False
                 done = False
+                dump_csv = False
                 print("Need 3 or more points for polygon drawing!")
         else:
             refPt = []
             distPt = None
             calc_plane = False
             done = False
+            dump_csv = False
+
+
+def dump_to_csv(filename, *argv, **kwargs):
+    global foldername
+    filename = "{}/{}.csv".format(foldername,filename)
+    mode = 'a+'
+    if kwargs is not None:
+        if "mode" in kwargs:
+            mode = kwargs['mode']
+    row = list()
+    for arg in argv:
+        if type(arg) is list:
+            for el in arg:
+                row.append(el)
+        else:
+            row.append(arg)
+    with open(filename, mode) as myfile:
+        wr = csv.writer(myfile, delimiter=',', quoting=csv.QUOTE_ALL)
+        wr.writerow(row)
+
+def dump_image_to_file(image, name):
+    global foldername
+    filename = "{}/{}.jpg".format(foldername,name)
+    cv2.imwrite(filename, image)
 
 #QT app
 app = QtGui.QApplication([])
@@ -238,7 +327,9 @@ alpha = 0.5
 
 # Loop
 def update():
-    global alpha, distPt, calc_plane, plane_first, plane_second
+#######################################################################
+    global alpha, distPt, calc_plane, plane_first, plane_second, mgrid_dist, calc_grid
+    global dump_depth_image, dump_csv
 
     if not calc_plane and not done:
         calc_plane = True
@@ -258,6 +349,10 @@ def update():
     # Grab a new color frame
     color_frame = color_stream.read_frame()
     color_frame_data = color_frame.get_buffer_as_uint8()
+    
+    # Get the time of frame capture
+    t = time.time()
+    dt = datetime.datetime.fromtimestamp(t)
 
     # Put the depth frame into a numpy array and reshape it
     depth_img = np.frombuffer(depth_frame_data, dtype=np.uint16)
@@ -267,22 +362,21 @@ def update():
     depth_img = np.swapaxes(depth_img, 0, 1)
 
     depth_image = np.ndarray((depth_frame.height,depth_frame.width),dtype=np.uint16,buffer=depth_frame_data)
-
+    
     # Put the color frame into a numpy array, reshape it, and convert from bgr to rgb
-    color_img = np.frombuffer(color_frame_data, dtype=np.uint8)
-    color_img.shape = (480, 640, 3)
-    color_img = color_img[...,::-1]
+    color_image = np.frombuffer(color_frame_data, dtype=np.uint8)
+    color_image.shape = (480, 640, 3)
+    color_image = color_image[...,::-1]
 
     depth_image = np.fliplr(depth_image)
     depth_img = np.fliplr(depth_img)
-    color_img = np.fliplr(color_img)
+    color_image = np.fliplr(color_image)
 
-    color_img = color_img.copy()
+    color_img = color_image.copy()
     depth_img = depth_img.copy()
 
-    #shape_img= color_img.copy()
-    #text_img= color_img.copy()
-    #mask_img = color_img.copy()
+    image_color = color_image.copy()
+    image_depth = depth_img.copy()
 
     shape_img= np.zeros_like(color_img)
     text_img= np.zeros_like(color_img)
@@ -295,30 +389,29 @@ def update():
         if len(refPt) == 1 and not selecting:
             point = (refPt[0][0],refPt[0][1])
             point_distance = float(depth_img[refPt[0][1]][refPt[0][0]][0]/10000.0)
-            print(point_distance)
+            # First point
             cv2.circle(shape_img, refPt[0], 3, (0,0,255), 1)
-            cv2.putText(text_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-            cv2.putText(text_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Point X,Y: {},{}".format(point[0], point[1]), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
+            cv2.putText(text_img,"Point distance in Meters: {}".format(point_distance), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
         # click+drag
         if selecting and not done:
             cv2.rectangle(shape_img, refPt[0], (mousex,mousey), (0, 255, 0), 2)
 
-        if len(refPt) > 1 and done:
-            if len(refPt) == 2:
-                mask = np.zeros((mask_img.shape[0], mask_img.shape[1]))
-                cv2.rectangle(mask, refPt[0], refPt[1], 1, thickness=-1)
-                mask = mask.astype(np.bool)
+        if len(refPt) ==2 and done:
+            mask = np.zeros((mask_img.shape[0], mask_img.shape[1]))
+            cv2.rectangle(mask, refPt[0], refPt[1], 1, thickness=-1)
+            mask = mask.astype(np.bool)
 
-                mask_img[mask] = color_img[mask]
+            mask_img[mask] = color_img[mask]
 
-                cv2.rectangle(shape_img, refPt[0], refPt[1], (0, 255, 0), 2)
-                left = min(refPt[0][0],refPt[1][0])
-                top = min(refPt[0][1],refPt[1][1])
-                right = max(refPt[0][0],refPt[1][0])
-                bottom = max(refPt[0][1],refPt[1][1])
+            cv2.rectangle(shape_img, refPt[0], refPt[1], (0, 255, 0), 2)
+            left = min(refPt[0][0],refPt[1][0])
+            top = min(refPt[0][1],refPt[1][1])
+            right = max(refPt[0][0],refPt[1][0])
+            bottom = max(refPt[0][1],refPt[1][1])
 
-                #print "{}:{} {}:{}".format(top, left, bottom, right)
-                roi = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+            #print "{}:{} {}:{}".format(top, left, bottom, right)
+            roi = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
 
         # polygon
         if len(refPt) > 1 and not done:
@@ -341,8 +434,53 @@ def update():
             cv2.rectangle(shape_img, (left, top), (right, bottom), color=(255,0,0), thickness=3)
 
             #print "{}:{} {}:{}".format(top, left, bottom, right)
-            roi= depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+            #roi_rect = depth_image[top:bottom,left:right] # because the image is 480x640 not 640x480
+            roi_mask = np.zeros_like(depth_image)
+            roi_mask[mask] = depth_image[mask]
+            roi = roi_mask[top:bottom,left:right]
 
+        if mgrid_dist and calc_grid:
+            distPt = []
+
+            count = (mgrid_count[0] + 1, mgrid_count[1] + 1)
+            if len(refPt) == 2:
+                mn = (0, 0)
+                mx = (roi.shape[1], roi.shape[0])
+            else:
+                # This code was meant to get a skewed grid if there's a mask, but it still computes the above
+                rows, cols = roi.shape
+                c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
+                valid = (roi > 0) & (roi < 65536.0)
+                Z = np.where(valid, roi, np.nan)
+                X = np.where(valid, (c), np.nan)
+                Y = np.where(valid, (r), np.nan)
+
+                x = X.flatten()
+                y = Y.flatten()
+                z = Z.flatten()
+
+                roi_grid = np.c_[x,y,z]
+                finite = np.isfinite(roi_grid).all(axis=1)
+                roi_grid = roi_grid[finite]
+
+                mn = (np.min(roi_grid[:,0]), np.min(roi_grid[:,1]))
+                mx = (np.max(roi_grid[:,0]), np.max(roi_grid[:,1]))
+            
+            X = np.linspace(mn[0], mx[0], count[0], dtype=np.int16, endpoint=False)
+            Y = np.linspace(mn[1], mx[1], count[1], dtype=np.int16, endpoint=False)
+            xv, yv = np.meshgrid(X, Y)
+
+
+            # get rid of first row and column
+            xv = xv[1:,1:]
+            yv = yv[1:,1:]
+
+            # at end, add offset from top, left to points:
+            for i in range(mgrid_count[0]):
+                for j in range(mgrid_count[1]):
+                    distPt.append(tuple(map(sum, zip((left, top), (xv[j, i], yv[j, i])))))
+
+            calc_grid = False
 
         # roi stats
         if len(refPt) > 1 and done:
@@ -355,28 +493,29 @@ def update():
             roi_std = np.round(np.nanstd(roi)/10000, 5)
 
             #cv2.rectangle(color_img, (5,5), (250,65), (50, 50, 50, 0), -1)
-            cv2.putText(text_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-            cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-            cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-            cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img,"Mean of ROI: {}".format(roi_mean), (10,15), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
+            cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
+            cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
+            cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
             print("Mean of ROI: ", roi_mean)
             print("Max of ROI: ", roi_max)
             print("Min of ROI: ", roi_min)
             print("Standard Deviation of ROI: ", roi_std)
 
         if distPt is not None:
-            cv2.circle(shape_img, distPt, 3, (0,0,255), 1)
+            for pt in distPt:
+                cv2.circle(shape_img, pt, 3, (0,0,255), 1)
 
         if plane_first is not None:
             C = np.round(plane_first[1],4)
             text_plane = '1 z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])
-            cv2.putText(text_img, text_plane, (10, 75), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
+            cv2.putText(text_img, text_plane, (10, 75), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
 
         if plane_second is not None:
             C = np.round(plane_second[1],4)
             text_plane = '2 z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])
-            cv2.putText(text_img, text_plane, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-
+            cv2.putText(text_img, text_plane, (10, 90), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
+            
     except Exception as e:
         print(e)
 
@@ -407,6 +546,7 @@ def update():
     v_scale = np.float32(v_rate) / w.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
     v_offset = (w.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
     size = v_scale + v_offset
+
 
     x = cloud[:,:,0].flatten()
     y = cloud[:,:,1].flatten()
@@ -497,24 +637,13 @@ def update():
                 Loop through n segments with m resolution
                     take std of points from line to determine colors
                 '''
-                print("Meh")
-                print np.min(roi_data[:,1]), np.max(roi_data[:,1])
-                print np.round(roi_data[:,1],3)
-                print len(roi_data[:,1])
-                print len(np.unique(np.round(roi_data[:,1],3)))
-                roi_x = roi_data[:,0]
-                roi_y = np.round(roi_data[:,1],3)
-                roi_z = roi_data[:,2]
+                #y_resolution = 20
+                #Y = np.linspace(np.min(roi_data[:,1]), np.max(roi_data[:,1]), y_resolution)
+                #for i in range(y_resolution):
+                    #x = roi_data[:,0]
+                    #pts = np.vstack([x,yi,z]).transpose()
+                    #sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
 
-                valid = (depth > 0) & (depth < 65536.0)
-                Z = np.where(valid, depth, np.nan)
-                X = np.where(valid, (Z * (c - cx)) / fx, 0)
-                y_resolution = 20
-                y = np.linspace(np.min(roi_y), np.max(roi_y), y_resolution)
-                for i in range(y_resolution):
-                    x = roi_data[:,0]
-                    pts = np.vstack([x,yi,z]).transpose()
-                    sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
             
             if calc < 3:
                 if calc_plane:
@@ -528,19 +657,13 @@ def update():
                 plane_second = plane
             calc_plane = False
 
-            if distPt is not None and not calc_plane:
-            
+            if distPt is not None:
                 distance = "NaN"
-                #if distPt[1] > top and distPt[1] < bottom:
-                #    if distPt[0] < right and distPt[0] > left:
                 # FIXME: find nearest cluster of points to selection
-                pt = distPt
+                pt = distPt[0]
                 p = cloud[pt[1]][pt[0]]
-                #p = openni2.convert_depth_to_world(depth_stream, pt[0], pt[1], depth_image[pt[0]][pt[1]])
-                #p = (p[0]/1000, p[1]/1000, p[2]/1000)
                 distance = np.round(distance_to_plane(p, plane_first),4)
-                cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,105), cv2.FONT_HERSHEY_SIMPLEX, .5, (255,255,255))
-                #print "Distance to Plane: {}".format(distance)
+                cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,105), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
 
 
     except Exception as e:
@@ -554,6 +677,35 @@ def update():
     cv2.imshow("Depth Image", img)
 
     sp2.setData(pos=pos, color=colors, size=size, pxMode=True)
+    
+    # Once you select the plane, save the raw images and composite
+    # dump_to_csv(filename, time, args)
+    # dump_image_to_file(image, name, time)
+    if dump_depth_image==1:
+        dump_image_to_file(image_color, "image_color") 
+        dump_image_to_file(image_depth, "image_depth") 
+        dump_image_to_file(text_img, "image_text") 
+        dump_image_to_file(shape_img, "image_shape") 
+        dump_image_to_file(mask_img, "image_mask") 
+        dump_image_to_file(img, "main") 
+        if dump_csv:
+            grid_data = list()
+            grid_data.append(dt.strftime("%D"))
+            grid_data.append(dt.strftime("%T"))
+            for pt in distPt:
+                grid_data.append(pt)
+            dump_to_csv("grid", grid_data, mode="a+")
+        dump_depth_image=0
+
+    if dump_csv:
+        raw_data = list()
+        raw_data.append(dt.strftime("%D"))
+        raw_data.append(dt.strftime("%T"))
+        for pt in distPt:
+            p = cloud[pt[1]][pt[0]]
+            distance = np.round(distance_to_plane(p, plane_first),4)
+            raw_data.append(distance)
+        dump_to_csv("raw", raw_data)
 
     key = cv2.waitKey(1) & 0xFF
     if (key == 27 or key == ord('q') or key == ord('x') or key == ord("c")):
@@ -569,8 +721,12 @@ t.start(150)
 
 
 ## Start Qt event loop unless running in interactive mode.
+#######################################################################
 if __name__ == '__main__':
-    import sys
+    print("3D plane deflection system.  Version = " + sVersionID)
+    print("")
+    print("")
+    pathlib.Path(foldername).mkdir(parents=True, exist_ok=True)
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
         QtGui.QApplication.instance().exec_()
 
