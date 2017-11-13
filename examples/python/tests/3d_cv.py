@@ -14,24 +14,55 @@
 #
 # 20171109                Original setup
 # 20171110                Grid, write to csv
+# 20171111                Some improvements, conda install
+# 20171112                Arguments, 
 #
 #
 #######################################################################
 
 '''
 Preferred Conda Environment Creation:
+  Linux:
     conda create -n py35 python=3.5 anaconda
     source activate py35
-    conda install pyqtgraph
-    conda install pyopengl
-    conda install pyopengl-accelerate 
+    conda install pyqtgraph pyopengl pyopengl-accelerate opencv-python
+    conda install pip
+    pip install openni opencv-python
+      or $CONDA_PREFIX/bin/pip install openni opencv-python
+  Windows:
+    conda create -n py35 python=3.5 anaconda
+    activate py35
+    conda install pyqtgraph pyopengl pyopengl-accelerate opencv-python
+    conda install pip
+    pip install openni opencv-python
+      or %CONDA_PREFIX%\Scripts\pip.exe install openni opencv-python
 '''
 
 # Version ID for sanity
-sVersionID="20171110"
+sVersionID="20171112"
+
+import sys
+import os
+import argparse
+
+openGL = True
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Depth Interface')
+    parser.add_argument('--2d', action='store_false', help="Disable 3d point cloud display\nUse if OpenGL does not work")
+    parser.add_argument('-f', '--fps', type=int, default="30", help="Frames Per Second")
+    parser.add_argument('-o', '--openni', default="use_default", help="Point to an openni Redist directory")
+    args = vars(parser.parse_args())
+    openGL = args['2d']
+    fps = args['fps']
+    if args['openni']== "use_default":
+        if sys.platform == "linux" or sys.platform == "linux2":
+            openni_path = "OpenNI-Linux-x64-2.3/Redist"
+        elif sys.platform == "win32":
+            openni_path = "OpenNI-Windows-x64-2.3\\Redist"
+    else:
+        openni_path = args['openni']
 
 import cv2
-import sys
 import math
 import pathlib
 import time
@@ -48,7 +79,9 @@ import pyqtgraph.opengl as gl
 #import pcl
 
 # Initialize the depth device
-openni2.initialize()
+openni2.initialize(openni_path)
+""" For Windows: Comment above line, uncomment line below """
+#openni2.initialize("C:\\Users\\User\\Desktop\\depth_cameras\\OpenNI-Windows-x64-2.3\\Redist") #Change dir if necessary
 dev = openni2.Device.open_any()
 
 # Global for grabbing images
@@ -267,63 +300,64 @@ def dump_image_to_file(image, name):
     filename = "{}/{}.jpg".format(foldername,name)
     cv2.imwrite(filename, image)
 
-#QT app
-app = QtGui.QApplication([])
-w = gl.GLViewWidget()
-w.opts['distance'] = 2
-w.opts['azimuth'] = -90
-w.opts['elevation'] = 0
-w.opts['fov'] = 65
-w.opts['center'] = QtGui.QVector3D(0.0, 1, 0.0)
-w.show()
-g = gl.GLGridItem()
+if openGL:
+    #QT app
+    app = QtGui.QApplication([])
+    w = gl.GLViewWidget()
+    w.opts['distance'] = 2
+    w.opts['azimuth'] = -90
+    w.opts['elevation'] = 0
+    w.opts['fov'] = 65
+    w.opts['center'] = QtGui.QVector3D(0.0, 1, 0.0)
+    w.show()
+    g = gl.GLGridItem()
 
-w.addItem(g)
+    w.addItem(g)
 
-#initialize some points data
-pos = np.zeros((10000,3))
+    #initialize some points data
+    pos = np.zeros((10000,3))
 
-sp2 = gl.GLScatterPlotItem(pos=pos)
-sp2.scale(1,1,1)
-sp2.rotate(-90,1,0,0)
-sp2.setGLOptions('opaque')
-w.addItem(sp2)
+    sp2 = gl.GLScatterPlotItem(pos=pos)
+    sp2.scale(1,1,1)
+    sp2.rotate(-90,1,0,0)
+    sp2.setGLOptions('opaque')
+    w.addItem(sp2)
 
-w2 = gl.GLViewWidget()
-w2.opts['distance'] = 1
-w2.opts['azimuth'] = -90
-w2.opts['elevation'] = 0
-w2.opts['fov'] = 65
-w2.opts['center'] = QtGui.QVector3D(0.0, 1.0, 0.0)
-w2.show()
-g2 = gl.GLGridItem()
+    w2 = gl.GLViewWidget()
+    w2.opts['distance'] = 1
+    w2.opts['azimuth'] = -90
+    w2.opts['elevation'] = 0
+    w2.opts['fov'] = 65
+    w2.opts['center'] = QtGui.QVector3D(0.0, 1.0, 0.0)
+    w2.show()
+    g2 = gl.GLGridItem()
 
-w2.addItem(g2)
+    w2.addItem(g2)
 
-sp3 = gl.GLScatterPlotItem(pos=np.zeros((10,3)))
-sp3.scale(1,1,1)
-sp3.rotate(-90,1,0,0)
-sp3.setGLOptions('opaque')
-w2.addItem(sp3)
+    sp3 = gl.GLScatterPlotItem(pos=np.zeros((10,3)))
+    sp3.scale(1,1,1)
+    sp3.rotate(-90,1,0,0)
+    sp3.setGLOptions('opaque')
+    w2.addItem(sp3)
 
-sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((0.0,0.0,1.0,0.4)))
-sp4.scale(1,1,1)
-sp4.rotate(-90,1,0,0)
-sp4.setGLOptions('translucent')
-w2.addItem(sp4)
+    sp4 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((0.0,0.0,1.0,0.4)))
+    sp4.scale(1,1,1)
+    sp4.rotate(-90,1,0,0)
+    sp4.setGLOptions('translucent')
+    w2.addItem(sp4)
 
-sp5 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,0.0,0.0,0.4)))
-sp5.scale(1,1,1)
-sp5.rotate(-90,1,0,0)
-sp5.setGLOptions('translucent')
-w2.addItem(sp5)
+    sp5 = gl.GLSurfacePlotItem(x=np.empty((10,)), y=np.empty((10,)), z=np.empty((10, 10)), color=((1.0,0.0,0.0,0.4)))
+    sp5.scale(1,1,1)
+    sp5.rotate(-90,1,0,0)
+    sp5.setGLOptions('translucent')
+    w2.addItem(sp5)
 
 #def stats():
 # Initial OpenCV Window Functions
 cv2.namedWindow("Depth Image", flags=cv2.WINDOW_GUI_NORMAL | cv2.WINDOW_AUTOSIZE)
 cv2.setMouseCallback("Depth Image", cv_mouse_event)
 
-alpha = 0.5
+alpha = 0.15
 
 # Loop
 def update():
@@ -443,10 +477,9 @@ def update():
             distPt = []
 
             count = (mgrid_count[0] + 1, mgrid_count[1] + 1)
-            if len(refPt) == 2:
-                mn = (0, 0)
-                mx = (roi.shape[1], roi.shape[0])
-            else:
+            mn = (0, 0)
+            mx = (roi.shape[1], roi.shape[0])
+            if len(refPt) > 2:
                 # This code was meant to get a skewed grid if there's a mask, but it still computes the above
                 rows, cols = roi.shape
                 c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
@@ -504,7 +537,7 @@ def update():
 
         if distPt is not None:
             for pt in distPt:
-                cv2.circle(shape_img, pt, 3, (0,0,255), 1)
+                cv2.circle(shape_img, pt, 3, (0,0,255,255), 1)
 
         if plane_first is not None:
             C = np.round(plane_first[1],4)
@@ -524,13 +557,14 @@ def update():
 
     min_depth = 4500.0
     max_depth = float(max(np.nanmax(depth_img), 65535.0/4.0))
-    alpha = float(min_depth/max_depth)
+    #alpha = float(min_depth/max_depth)
     depth_img = cv2.convertScaleAbs(depth_img, alpha=(255.0/(65535.0/2.0)))
 
     cv2.addWeighted(mask_img, alpha, color_img, 1-alpha, 0, color_img)
-    cv2.addWeighted(shape_img, 1, color_img, 1, 0, color_img)
+    cv2.addWeighted(shape_img, 1, color_img, .75, 0, color_img)
+    #cv2.bitwise_and(shape_img>0, color_img, color_img)
     #cv2.addWeighted(mask_img, alpha, depth_img, 1-alpha, 0, depth_img)
-    cv2.addWeighted(shape_img, alpha, depth_img, 1, 0, depth_img)
+    cv2.addWeighted(shape_img, 1, depth_img, .75, 0, depth_img)
 
     depth_pt_image = depth_image.copy()
     color_pt_img = color_img.copy()
@@ -541,12 +575,12 @@ def update():
 
     cloud, colors = point_cloud(depth_pt_image, color_pt_img)
 
-    # Calculate a dynamic vertex size based on window dimensions and camera's position - To become the "size" input for the scatterplot's setData() function.
-    v_rate = 2.5 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
-    v_scale = np.float32(v_rate) / w.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
-    v_offset = (w.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
-    size = v_scale + v_offset
-
+    if openGL:
+        # Calculate a dynamic vertex size based on window dimensions and camera's position - To become the "size" input for the scatterplot's setData() function.
+        v_rate = 2.5 # Rate that vertex sizes will increase as zoom level increases (adjust this to any desired value).
+        v_scale = np.float32(v_rate) / w.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
+        v_offset = (w.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
+        size = v_scale + v_offset
 
     x = cloud[:,:,0].flatten()
     y = cloud[:,:,1].flatten()
@@ -585,10 +619,11 @@ def update():
             roi_points[:, 1] = roi_y
             roi_points[:, 2] = roi_z 
 
-            v2_rate = 2.5
-            v2_scale = np.float32(v2_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
-            v2_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
-            size2 = v2_scale + v2_offset
+            if openGL:
+                v2_rate = 2.5
+                v2_scale = np.float32(v2_rate) / w2.opts['distance'] # Vertex size increases as the camera is "zoomed" towards center of view.
+                v2_offset = (w2.geometry().width() / 1000)**2 # Vertex size is offset based on actual width of the viewport.
+                size2 = v2_scale + v2_offset
 
             roi_data = np.c_[roi_x,roi_y,roi_z]
             finite = np.isfinite(roi_data).all(axis=1)
@@ -596,7 +631,8 @@ def update():
 
             roi_colors = roi_colors[finite]
 
-            sp3.setData(pos=roi_data, color=roi_colors, size=size2, pxMode=True) 
+            if openGL:
+                sp3.setData(pos=roi_data, color=roi_colors, size=size2, pxMode=True) 
 
             plane = None
 
@@ -645,11 +681,12 @@ def update():
                     #sp5.setData(pos = pts, color=pg.glColor((i, n*1.3)), width=(i+1)/10.)
 
             
-            if calc < 3:
-                if calc_plane:
-                    sp4.setData(x=X, y=Y, z=Z)
-                else:
-                    sp5.setData(x=X, y=Y, z=Z)
+            if openGL:
+                if calc < 3:
+                    if calc_plane:
+                        sp4.setData(x=X, y=Y, z=Z)
+                    else:
+                        sp5.setData(x=X, y=Y, z=Z)
 
             if calc_plane:
                 plane_first = plane
@@ -676,7 +713,8 @@ def update():
     # Display the reshaped depth frame using OpenCV
     cv2.imshow("Depth Image", img)
 
-    sp2.setData(pos=pos, color=colors, size=size, pxMode=True)
+    if openGL:
+        sp2.setData(pos=pos, color=colors, size=size, pxMode=True)
     
     # Once you select the plane, save the raw images and composite
     # dump_to_csv(filename, time, args)
@@ -693,7 +731,14 @@ def update():
             grid_data.append(dt.strftime("%D"))
             grid_data.append(dt.strftime("%T"))
             for pt in distPt:
-                grid_data.append(pt)
+                # get point in real-world coordinates
+                pt_to_world = cloud[pt[1]][pt[0]]
+                # offset from top-left
+                pt_top_left = cloud[top][left]
+                pt_out = pt_to_world - pt_top_left
+                # offset to plane (?)
+                # TODO
+                grid_data.append(pt_out)
             dump_to_csv("grid", grid_data, mode="a+")
         dump_depth_image=0
 
@@ -704,6 +749,8 @@ def update():
         for pt in distPt:
             p = cloud[pt[1]][pt[0]]
             distance = np.round(distance_to_plane(p, plane_first),4)
+            if distance is np.nan:
+                distance = " "
             raw_data.append(distance)
         dump_to_csv("raw", raw_data)
 
@@ -715,9 +762,10 @@ def update():
         cv2.destroyAllWindows()
         sys.exit(0)
 
-t = QtCore.QTimer()
-t.timeout.connect(update)
-t.start(150)
+if openGL:
+    t = QtCore.QTimer()
+    t.timeout.connect(update)
+    t.start(1./fps)
 
 
 ## Start Qt event loop unless running in interactive mode.
@@ -726,9 +774,15 @@ if __name__ == '__main__':
     print("3D plane deflection system.  Version = " + sVersionID)
     print("")
     print("")
+
     pathlib.Path(foldername).mkdir(parents=True, exist_ok=True)
-    if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+    if openGL:
+        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+            QtGui.QApplication.instance().exec_()
+    else:
+        while True:
+            update()
+            time.sleep(1./fps)
 
 # Close all windows and unload the depth device
 depth_stream.stop()
