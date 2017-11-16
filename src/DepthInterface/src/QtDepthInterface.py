@@ -16,14 +16,27 @@ from .QtPointCloud import *
 
 class DepthInterface(QtGui.QMainWindow):
 
-    def __init__(self, parent=None):
-        super(QtGui.QMainWindow, self).__init__(parent)
-        self._set_window_size(800,600,False)
+    def __init__(self, args):
+        self.parent_ = args.pop('parent', None)
+        self.args = args
+        super(QtGui.QMainWindow, self).__init__(self.parent_)
+        self.show_gl = args['3d']
+        self.debugging = args['debug']
+        if self.debugging:
+            logger.info("Enabling Debug Mode")
+            logger.root.setLevel(logging.DEBUG)
+        self.windowTitle = args.pop('window_title', "Depth Interface")
+        self.setWindowTitle(self.windowTitle)
+        self._set_window_size(1024,600,False)
+
         self.__layout()
         self.__init_menu()
         self.statusBar().showMessage('Listing Devices')
         self.show_device_list()
         self.statusBar().showMessage('Ready')
+
+        if args.pop('open_any'):
+            self.device_list.open_any()
 
     def __layout(self):
         _widget = QtGui.QWidget()
@@ -43,21 +56,23 @@ class DepthInterface(QtGui.QMainWindow):
         self.fileMenu = self.mainMenu.addMenu('&File')
         #self.dataMenu = self.mainMenu.addMenu('Data')
         self.aboutMenu = self.mainMenu.addMenu('About')
-        #self.debugMenu = self.mainMenu.addMenu('Debug')
+        if self.debugging:
+            self.debugMenu = self.mainMenu.addMenu('Debug')
 
         exitButton = QtGui.QAction(QtGui.QIcon(), 'Exit', self)
         exitButton.setShortcut("Ctrl+Q")
         exitButton.setStatusTip("Exit Application")
-        exitButton.triggered.connect(self._close)
+        exitButton.triggered.connect(self._close_dialog)
         self.fileMenu.addAction(exitButton)
 
-    def _close(self, *args):
-        if QtGui.QMessageBox.question(None, '', "Are you sure you want to quit?",
+    def _close_dialog(self, *args):
+        if QtGui.QMessageBox.question(None, self.windowTitle, "Are you sure you want to quit?",
                                 QtGui.QMessageBox.Yes | QtGui.QMessageBox.No,
                                 QtGui.QMessageBox.No) == QtGui.QMessageBox.Yes:
-            self._destruct(args)
+            self.close()
     
     def _destruct(self, *args):
+        logging.debug("Destructing")
         self.close()
         openni2.unload()
         QtGui.QApplication.quit()
@@ -88,8 +103,8 @@ class DepthInterface(QtGui.QMainWindow):
         self.tabWidget.setCurrentIndex(tab)
 
     def show_device_list(self):
-        device_list = DeviceSelection(self)
-        self.add_tab(device_list)
+        self.device_list = DeviceSelection(self)
+        self.add_tab(self.device_list)
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)

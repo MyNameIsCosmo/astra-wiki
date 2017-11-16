@@ -11,6 +11,8 @@ from logging.config import dictConfig
 from openni import openni2
 from openni import _openni2 as c_api
 
+platform = sys.platform
+
 class Timer:    
     def __enter__(self):
         self.start = time.clock()

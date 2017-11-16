@@ -10,6 +10,9 @@ class DeviceViewer(QtGui.QWidget):
         super(QtGui.QWidget, self).__init__(parent)
         self.destroyed.connect(self._destroy)
         self.parent_ = parent
+
+        self.openni_path = self.parent_.args['openni']
+
         self.uri = device[0]
         self.make = str(device[1], 'ascii')
         self.model = str(device[2], 'ascii')
@@ -49,13 +52,13 @@ class DeviceViewer(QtGui.QWidget):
 
     def __layout(self):
         self.vbox = QtGui.QVBoxLayout()
-        self.vbox_images = QtGui.QVBoxLayout(self.widget_images)
+        self.hbox_images = QtGui.QHBoxLayout(self.widget_images)
 
         self.vbox.setContentsMargins(0,0,0,0)
         self.vbox.setSpacing(5)
 
-        self.vbox_images.addWidget(self.widget_image_color)
-        self.vbox_images.addWidget(self.widget_image_depth)
+        self.hbox_images.addWidget(self.widget_image_color)
+        self.hbox_images.addWidget(self.widget_image_depth)
 
         self._add_tab(self.tab_main, self.widget_images)
         self._add_tab(self.tab_main, self.widget_point_cloud)
@@ -88,11 +91,10 @@ class DeviceViewer(QtGui.QWidget):
         self.widget_image_color.update(image_color)
         self.widget_image_depth.update(image_depth, mapping=QtGui.QImage.Format_Indexed8)
 
-
         self.widget_analyze.update_images(image_depth, image_color)
 
     def _init_device(self, uri):
-        self.device = OpenNIDevice(uri)
+        self.device = OpenNIDevice(uri, self.openni_path)
         self.device.open_stream_depth()
         self.device.open_stream_color()
 

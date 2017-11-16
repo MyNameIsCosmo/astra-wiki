@@ -57,10 +57,34 @@ OpenNI.device functions:
 
 STREAM_NAMES = {1: "ir", 2: "color", 3: "depth"}
 
-def openni_list():
-    if (not openni2.is_initialized()):
-        logger.info("OpenNi2 is not Initialized! Initializing.")
+def openni_init(path="."):
+    if path:
+        if not "Redist" in path:
+            if "linux" in sys.platform:
+                path = path.rstrip('/') + "/Redist"
+            elif "win32" in sys.platform:
+                path = path.rstrip('\\') + "\\Redist"
+    try:
+        if (not openni2.is_initialized()):
+            logger.info("OpenNi2 is not Initialized! Initializing.")
+            openni2.initialize(path)
+        return True
+    except Exception as e:
+        logger.error(e)
+        logger.error("Openni path is: " + path)
+
+    try:
+        logger.warning("Resorting to standard openni2 initialization")
         openni2.initialize()
+        return True
+    except Exception as e:
+        logger.fatal(e)
+
+    return False
+
+
+def openni_list(path=""):
+    openni_init(path)
     pdevs = ctypes.POINTER(c_api.OniDeviceInfo)()
     count = ctypes.c_int()
     c_api.oniGetDeviceList(ctypes.byref(pdevs), ctypes.byref(count))
@@ -146,10 +170,8 @@ class OpenNIStream_IR(OpenNIStream):
         return self.frame_data
 
 class OpenNIDevice(openni2.Device):
-    def __init__(self, uri=None, mode=None):
-        if (not openni2.is_initialized()):
-            logger.info("OpenNi2 is not Initialized! Initializing.")
-            openni2.initialize()
+    def __init__(self, uri=None, mode=None, path=None):
+        openni_init(path)
         #openni2.configure_logging(severity=0, console=True)
         openni2.Device.__init__(self, uri)
         self.stream = {'color': OpenNIStream_Color(self),
