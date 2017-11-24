@@ -1,3 +1,7 @@
+# 3D point picking
+#  https://groups.google.com/forum/#!msg/pyqtgraph/mZiiLO8hS70/XrJksi5PCAAJ
+#  https://github.com/pyqtgraph/pyqtgraph/blob/develop/pyqtgraph/opengl/GLViewWidget.py#L312
+# TODO: Move pointcloud generation to Device
 from .Common import *
 
 

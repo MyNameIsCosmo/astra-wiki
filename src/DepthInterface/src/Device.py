@@ -31,8 +31,7 @@ logging_config = dict(
         },
 )
 dictConfig(logging_config)
-logger = logging.getLogger()
-
+logger = logging.getLogger('Device')
 
 '''
 TODO:
@@ -129,7 +128,9 @@ def openni_list(path=""):
 
 class VideoMode():
     def __init__(self, oniVideoMode=None, pixelFormat=None, resolutionX=None, resolutionY=None, fps=None):
-        #TODO: clean up, make this a better object
+        self._set_video_mode(oniVideoMode=oniVideoMode, pixelFormat=pixelFormat, resolutionX=resolutionX, resolutionY=resolutionY, fps=fps)
+
+    def _set_video_mode(self, oniVideoMode = None, pixelFormat=None, resolutionX=None, resolutionY=None, fps=None):
         if oniVideoMode is not None:
             fps = oniVideoMode.fps
             pixelFormat = oniVideoMode.pixelFormat
@@ -140,8 +141,6 @@ class VideoMode():
         self.pixelFormat = pixelFormat
         self.resolutionX = resolutionX
         self.resolutionY = resolutionY
-
-        #print("{} {}:{}@{}".format(pixelFormat, resolutionX, resolutionY, fps))
 
     def __eq__(self, other):
         if isinstance(self, other.__class__):
@@ -157,8 +156,14 @@ class VideoMode():
     def __repr__(self):
         return ('{} {}:{}@{}'.format(repr(self.pixelFormat), repr(self.resolutionX), repr(self.resolutionY), repr(self.fps)))
 
+    @ property
     def video_mode(self):
         return openni2.VideoMode(pixelFormat = self.pixelFormat, resolutionX = self.resolutionX, resolutionY = self.resolutionY, fps = self.fps)
+
+    @ video_mode.setter
+    def video_mode(self, method):
+        self._set_video_mode(oniVideoMode=method)
+        return self.video_mode
 
 class OpenNIStream(openni2.VideoStream):
     #TODO: Handle different cameras (Kinect vs Astra)
@@ -175,9 +180,8 @@ class OpenNIStream(openni2.VideoStream):
             video_mode = VideoMode(mode)
             self.video_modes.append(video_mode)
 
-        self.settings = openni2.CameraSettings(self)
-
-        #self._set_video_mode(None)
+        #self.camera
+        #self.settings = openni2.CameraSettings(self)
 
     def _set_video_mode(self, video_mode=None):
         if video_mode is None:
@@ -186,31 +190,38 @@ class OpenNIStream(openni2.VideoStream):
                 video_mode = self.default_video_mode
             else:
                 video_mode = self.video_modes[0]
-        logger.debug("First video mode: {}".format(self.video_modes[0]))
-        logger.debug("Current video mode: {}".format(video_mode))
-        logger.debug("Default video mode: {}".format(self.default_video_mode))
-        if video_mode in self.video_modes:
-            #VideoMode(pixelFormat = pixelFormat, resolutionX = width, resolutionY = height, fps = fps)
-            self.set_video_mode(video_mode.video_mode())
-        else:
-            logger.error('Video Mode not valid for {0}\n{1}'.format(self.sensor_type, video_mode))
+        try:
+            if video_mode in self.video_modes:
+                self.set_video_mode(video_mode.video_mode)
+            else:
+                raise(Exception('Video Mode not valid for {}\n{}'.format(self.sensor_type, video_mode)))
+        except Exception as e:
+            logger.error(e)
             return False
-        return True
+        finally:
+            self.settings = openni2.CameraSettings(self)
+            self.fov = (self.get_horizontal_fov(), self.get_vertical_fov())
+            return True
 
     def _getData(self, ctype = None):
-        ctype = ctype if (ctype) else self.ctype
-        self.frame = self.read_frame()
-        self.height = self.frame.height
-        self.width = self.frame.width
-        frame_data_buffer = self.frame.get_buffer_as(ctype)
-        if (ctype is ctypes.c_ubyte):
-            dtype = np.uint8
-        else:
-            # FIXME: Handle this better? map pixelFormat to np/ctype?
-            dtype = np.uint16
-        #self.frame_data = np.ndarray((self.height,self.width),dtype=dtype,buffer=frame_data_buffer)
-        self.frame_data = np.frombuffer(frame_data_buffer, dtype=dtype)
-        return self.frame_data
+        try:
+            ctype = ctype if (ctype) else self.ctype
+            self.frame = self.read_frame()
+            self.height = self.frame.height
+            self.width = self.frame.width
+            frame_data_buffer = self.frame.get_buffer_as(ctype)
+            if (ctype is ctypes.c_ubyte):
+                dtype = np.uint8
+            else:
+                # FIXME: Handle this better? map pixelFormat to np/ctype?
+                dtype = np.uint16
+            #self.frame_data = np.ndarray((self.height,self.width),dtype=dtype,buffer=frame_data_buffer)
+            self.frame_data = np.frombuffer(frame_data_buffer, dtype=dtype)
+        except Exception as e:
+            logger.error(e)
+            return False
+        finally:
+            return self.frame_data
 
 class OpenNIStream_Color(OpenNIStream):
     def __init__(self, device):
@@ -268,8 +279,9 @@ class OpenNIDevice(openni2.Device):
                 return False
             stream_name = STREAM_NAMES[stream_type.value]
             if self.stream[stream_name].active:
-                logger.error("{} stream already active!".format(stream_name))
+                raise(Exception("{} stream already active!".format(stream_name)))
             self.stream[stream_name].start()
+            # TODO: No feedback if stream start was successful, evaluate?
             video_mode = None
             if width is not None and height is not None and fps is not None and pixelFormat is not None:
                 video_mode = openni2.VideoMode(pixelFormat=pixelFormat, resolutionX=width, resolutionY=height, fps=fps)
@@ -295,14 +307,10 @@ class OpenNIDevice(openni2.Device):
         '''
         try:
             if (not self.has_sensor(stream_type)):
-                logger.warning("Device does not have stream type of {}".format(stream_type))
-                return False
-
+                raise(Exception("Device does not have stream type of {}".format(stream_type)))
             stream_name = STREAM_NAMES[stream_type.value]
             if not self.stream[stream_name].active:
-                logger.warning("{} stream not active!".format(stream_name))
-                return False
-
+                raise(Exception("{} stream not active!".format(stream_name)))
             return self.stream[stream_name].getData()
         except Exception as e:
             logger.error("Failed to get frame", exc_info=True)
@@ -322,6 +330,8 @@ if __name__ == "__main__":
     device = OpenNIDevice()
 
     # FIXME: IR doesn't work?
+    #  Seems to be an OpenNI driver problem
+    #   Corrupt frame buffer
     show_depth = False
     show_color = True
     show_ir = False

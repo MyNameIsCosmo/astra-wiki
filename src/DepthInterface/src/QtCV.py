@@ -1,3 +1,5 @@
+# https://stackoverflow.com/questions/26791357/pyqt-qgraphicsview-pan-and-zoom-with-transform-matrix
+# https://stackoverflow.com/questions/3779654/pyqt-function-for-zooming-large-images#
 from .Common import *
 
 class CvToQImage(QtGui.QImage):

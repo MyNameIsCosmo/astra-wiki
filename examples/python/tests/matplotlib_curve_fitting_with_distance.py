@@ -1,4 +1,5 @@
 #!/usr/bin/evn python
+import sys
 
 import numpy as np
 import scipy.linalg
@@ -109,6 +110,9 @@ data = np.random.multivariate_normal(mean, cov, 8)
 mn = np.min(data, axis=0)
 mx = np.max(data, axis=0)
 X,Y = np.meshgrid(np.linspace(mn[0], mx[0], 5), np.linspace(mn[1], mx[1], 5))
+print X[0]
+print Y[:,0]
+sys.exit(0)
 XX = X.flatten()
 YY = Y.flatten()
 

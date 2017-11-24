@@ -1,11 +1,4 @@
-'''
-TODO: 
-    Camera intrinsics
-    Camera position offset in 3d space
-    Pop-up for grid properties
-    Pop-up for camera properties
-'''
-
+# https://stackoverflow.com/questions/16879971/example-of-the-right-way-to-use-qthread-in-pyqt
 from .Common import *
 from .Device import *
 from .QtDeviceSelection import *
@@ -54,16 +47,32 @@ class DepthInterface(QtGui.QMainWindow):
         self.mainMenu = self.menuBar()
         self.mainMenu.setNativeMenuBar(False)
         self.fileMenu = self.mainMenu.addMenu('&File')
+        self.viewMenu = self.mainMenu.addMenu('View')
+        self.toolsMenu = self.mainMenu.addMenu('Tools')
         #self.dataMenu = self.mainMenu.addMenu('Data')
-        self.aboutMenu = self.mainMenu.addMenu('About')
+        self.helpMenu = self.mainMenu.addMenu('Help')
         if self.debugging:
             self.debugMenu = self.mainMenu.addMenu('Debug')
+
+        '''
+        https://stackoverflow.com/questions/10368947/how-to-make-qmenu-item-checkable-pyqt4-python#10369171
+        https://stackoverflow.com/a/20931230
+        FILE            VIEW           TOOLS         HELP        DEBUG
+        ---------------------------------------------------------------
+        Open            
+          > ONI
+          > Device
+        Close
+        --
+        Exit
+        '''
 
         exitButton = QtGui.QAction(QtGui.QIcon(), 'Exit', self)
         exitButton.setShortcut("Ctrl+Q")
         exitButton.setStatusTip("Exit Application")
         exitButton.triggered.connect(self._close_dialog)
         self.fileMenu.addAction(exitButton)
+
 
     def _close_dialog(self, *args):
         if QtGui.QMessageBox.question(None, self.windowTitle, "Are you sure you want to quit?",

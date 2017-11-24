@@ -17,6 +17,15 @@
 # 20171111                Some improvements, conda install
 # 20171112                Arguments, 
 #
+# 20171113                Fix format for time stamp, to show millis
+#                           Debug option added to remove printing
+#                           Still at 5 fps, should be faster
+# 20171113_2              By default disable 3d interface
+#                         Remove "nan" from raw data
+#                         Quotes around CSV generation optional
+#                         Various arguments for grid gen, etc
+#                         Inspect point with grid generation on left click
+#                         Code cleanup
 #
 #######################################################################
 
@@ -39,7 +48,7 @@ Preferred Conda Environment Creation:
 '''
 
 # Version ID for sanity
-sVersionID="20171112"
+sVersionID="20171113_2"
 
 import sys
 import os
@@ -48,12 +57,26 @@ import argparse
 openGL = True
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Depth Interface')
-    parser.add_argument('--2d', action='store_false', help="Disable 3d point cloud display\nUse if OpenGL does not work")
-    parser.add_argument('-f', '--fps', type=int, default="30", help="Frames Per Second")
-    parser.add_argument('-o', '--openni', default="use_default", help="Point to an openni Redist directory")
+    parser.add_argument('--no-grid', action='store_false', help="Disable grid generation")
+    parser.add_argument('--grid', type=int, default=[5,5], nargs=2, metavar=('columns', 'rows'), help="Size of grid generated")
+    parser.add_argument('--3d', action='store_true', help="Enable 3d point cloud display")
+    parser.add_argument('--fps', type=int, default="30", help="Frames Per Second")
+    parser.add_argument('--openni', default="use_default", help="Point to an openni Redist directory")
+    parser.add_argument('--quotes', action='store_true', help="Wrap CSV output in quotes")
+    parser.add_argument('--debug', action='store_true', help="Debug printing")
+    parser.add_argument('--directory', default="no_directory_specified", help="Directory for storing data (not implemented)")
+    parser.add_argument('--version', action='store_true', help="Print version then exit")
     args = vars(parser.parse_args())
-    openGL = args['2d']
+    if args['version']:
+        print("\n3D plane deflection system.  Version = " + sVersionID + "\n")
+        sys.exit(0)
+    openGL = args['3d']
     fps = args['fps']
+    quotes = args['quotes']
+    debug_print = args['debug']
+    foldername = args['directory']
+    mgrid_dist = args['no_grid'] 
+    mgrid_count = args['grid']
     if args['openni']== "use_default":
         if sys.platform == "linux" or sys.platform == "linux2":
             openni_path = "OpenNI-Linux-x64-2.3/Redist"
@@ -61,6 +84,9 @@ if __name__ == '__main__':
             openni_path = "OpenNI-Windows-x64-2.3\\Redist"
     else:
         openni_path = args['openni']
+else:
+    print("Please run this script directly, it is not written for import.")
+    sys.exit(0)
 
 import cv2
 import math
@@ -72,16 +98,20 @@ import numpy as np
 from openni import openni2
 from openni import _openni2 as c_api
 
-# An example using startStreams
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
-#import pcl
+if quotes:
+    quoting = csv.QUOTE_ALL
+else:
+    quoting = csv.QUOTE_MINIMAL
+if foldername is "no_directory_specified":
+    d = time.strftime("%m-%d-%y")
+    tm = time.strftime("%H-%M-%S")
+    foldername = "./{}/{}".format(d,tm)
 
 # Initialize the depth device
 openni2.initialize(openni_path)
-""" For Windows: Comment above line, uncomment line below """
-#openni2.initialize("C:\\Users\\User\\Desktop\\depth_cameras\\OpenNI-Windows-x64-2.3\\Redist") #Change dir if necessary
 dev = openni2.Device.open_any()
 
 # Global for grabbing images
@@ -105,8 +135,7 @@ dev.set_image_registration_mode(openni2.IMAGE_REGISTRATION_DEPTH_TO_COLOR)
 # Function to return some pixel information when the OpenCV window is clicked
 refPt = []
 distPt = None
-mgrid_dist = True
-mgrid_count = (5,5) # for a 5x5 grid
+inspectPt = None
 selecting = False
 calc_plane = True
 calc_grid = False
@@ -118,69 +147,36 @@ drawing = False
 plane_first = None
 plane_second = None
 
-d = time.strftime("%m-%d-%y")
-tm = time.strftime("%H-%M-%S")
-foldername = "./{}/{}".format(d,tm)
 
 def reject_outliers(data, m = 2.):
-#######################################################################
+    # Not used
     d = np.abs(data - np.nanmedian(data))
     mdev = np.nanmedian(d)
     s = d/(mdev if mdev else 1.)
     return data[s<m]
 
 def nan_helper(y):
-#######################################################################
+    # Helper function to return nans in array
     return np.isnan(y), lambda z: z.nonzero()[0]
 
-
-def distance_to_plane(p, plane_data):
-#######################################################################
+def point_on_plane(p, plane_data):
+    # Get the point on the plane relative to point p
     plane, C = plane_data
 
-    p0 = np.array(plane[0])
-    p1 = np.array(plane[int(len(plane)/2)])
-    p2 = np.array(plane[-1])
-
-    # These two vectors are in the plane
-    v1 = p2 - p0
-    v2 = p1 - p0
-
-    # the cross product is a vector normal to the plane
-    cp = np.cross(v1, v2)
-    a, b, c = cp
-
-    # This evaluates a * x3 + b * y3 + c * z3 which equals d
-    d = np.dot(cp, p2)
-
-    u = p1 - p0
-    v = p2 - p0
-    # vector normal to plane
-    n = np.cross(u, v)
-    n /= np.linalg.norm(n)
-
-    p_ = p - p0
-    dist_to_plane = np.dot(p_, n)
-    p_normal = np.dot(p_, n) * n
-    p_tangent = p_ - p_normal
-
-    closest_point = p_tangent + p0
-    coords = np.linalg.lstsq(np.column_stack((u, v)), p_tangent)[0]
-
-    #x = closest_point[0]
-    #y = closest_point[1]
     x = p[0]
     y = p[1]
     #linear z_plane = C[0]*x + C[1]*y + C[2] 
-    z_plane = C[4]*x**2. + C[5]*y**2. + C[3]*x*y + C[1]*x + C[2]*y + C[0]
+    z = C[4]*x**2. + C[5]*y**2. + C[3]*x*y + C[1]*x + C[2]*y + C[0]
     
-    pp = [x, y, z_plane]
+    return (x, y, z)
 
-    #dist_to_pp = math.sqrt((pp[0] - p[0]) ** 2 + (pp[1] - p[1]) ** 2 + (pp[2] - p[2]) ** 2)
+def distance_to_plane(p, plane_data):
+    # Calculate the distance from a 3D point p to the plane defined by (plane_point_array, coefficients)
+    pp = point_on_plane(p, plane_data)
+
     dist_to_pp = np.linalg.norm(pp-p)
     dist_to_pp = -dist_to_pp if pp[2] > p[2] else dist_to_pp
 
-    #return dist_to_plane
     return dist_to_pp
 
 # Instrinsic calibration values guestimated.
@@ -206,47 +202,51 @@ def point_cloud(image_depth,image_color=None, cx=328, cy=241, fx=586, fy=589, sc
 
     return pointcloud, colors
          
-
-def cv_mouse_event(event, x, y, flags, param):
-#######################################################################
+def reset_globals():
+    # Temporary function to make code "cleaner"
     global refPt, done, selecting, mousex, mousey, drawing, distPt, calc_plane, mgrid_dist, calc_grid
     global dump_depth_image, dump_csv
-    while drawing:
-        continue
+    refPt = []
+    distPt = None
+    inspectPt = None
+    calc_plane = False
+    done = False
+    dump_csv = False
+
+def cv_mouse_event(event, x, y, flags, param):
+    # callback for cv2 mouse event
+    global refPt, inspectPt, done, selecting, mousex, mousey, drawing, distPt, calc_plane, mgrid_dist, calc_grid
+    global dump_depth_image, dump_csv
     if x > 640:
         x = x - 640
     if y > 480:
         y = y - 480
     mousex = x
     mousey = y
-    """
-    right-click = point
-    left-click = draw shape
 
-    """
     if event == cv2.EVENT_LBUTTONDOWN:
         #click
-        if done and len(refPt) < 2:
-            refPt = []
-            distPt = None
-            calc_plane = False
-            done = False
-            dump_csv = False
-            return
+        #if done and len(refPt) < 2:
+        #    reset_globals()
+        #    return
         if len(refPt) == 0:
             selecting = True
-        if len(refPt) > 1 and done and not mgrid_dist:
-            if distPt is None:
-                distPt = []
-            distPt.append((x,y))
-            dump_csv = True
+        if done:
+            if not mgrid_dist:
+                if distPt is None:
+                    distPt = []
+                distPt.append((x,y))
+                dump_csv = True
+            else:
+                inspectPt = (x,y)
         else:
             refPt.append((x,y))
     elif event == cv2.EVENT_LBUTTONUP:
         # click+drag
         if ((refPt[0][0] != x) and (refPt[0][1] != y) and selecting):
             refPt.append((x,y))
-            print("Done, saving image.")
+            if debug_print:
+                print("Done, saving image.")
             dump_depth_image=1
             done = True
             calc_grid=True
@@ -256,34 +256,25 @@ def cv_mouse_event(event, x, y, flags, param):
     elif event == cv2.EVENT_RBUTTONDOWN:
         if not done:
             if len(refPt) > 2:
-                print("Done, saving image.")
+                if debug_print:
+                    print("Done, saving image.")
                 dump_depth_image=1
                 done = True
                 calc_grid=True
                 if mgrid_dist:
                     dump_csv=True
             else:
-                refPt = []
-                distPt = None
-                calc_plane = False
-                done = False
-                dump_csv = False
+                reset_globals()
                 print("Need 3 or more points for polygon drawing!")
         else:
-            refPt = []
-            distPt = None
-            calc_plane = False
-            done = False
-            dump_csv = False
+            reset_globals
 
-
+# TODO: either dump to buffer (cstringio), then write every x seconds (or when buffer is filled)
+#       Or hold file open in "main" loop, write to file, then flush in the command
 def dump_to_csv(filename, *argv, **kwargs):
-    global foldername
+    global foldername, quoting
     filename = "{}/{}.csv".format(foldername,filename)
-    mode = 'a+'
-    if kwargs is not None:
-        if "mode" in kwargs:
-            mode = kwargs['mode']
+    mode = kwargs.pop('mode', 'a+')
     row = list()
     for arg in argv:
         if type(arg) is list:
@@ -292,7 +283,7 @@ def dump_to_csv(filename, *argv, **kwargs):
         else:
             row.append(arg)
     with open(filename, mode) as myfile:
-        wr = csv.writer(myfile, delimiter=',', quoting=csv.QUOTE_ALL)
+        wr = csv.writer(myfile, delimiter=',', quoting=quoting)
         wr.writerow(row)
 
 def dump_image_to_file(image, name):
@@ -362,7 +353,7 @@ alpha = 0.15
 # Loop
 def update():
 #######################################################################
-    global alpha, distPt, calc_plane, plane_first, plane_second, mgrid_dist, calc_grid
+    global alpha, distPt, inspectPt, calc_plane, plane_first, plane_second, mgrid_dist, calc_grid
     global dump_depth_image, dump_csv
 
     if not calc_plane and not done:
@@ -479,38 +470,18 @@ def update():
             count = (mgrid_count[0] + 1, mgrid_count[1] + 1)
             mn = (0, 0)
             mx = (roi.shape[1], roi.shape[0])
-            if len(refPt) > 2:
-                # This code was meant to get a skewed grid if there's a mask, but it still computes the above
-                rows, cols = roi.shape
-                c, r = np.meshgrid(np.arange(cols), np.arange(rows), sparse=True)
-                valid = (roi > 0) & (roi < 65536.0)
-                Z = np.where(valid, roi, np.nan)
-                X = np.where(valid, (c), np.nan)
-                Y = np.where(valid, (r), np.nan)
-
-                x = X.flatten()
-                y = Y.flatten()
-                z = Z.flatten()
-
-                roi_grid = np.c_[x,y,z]
-                finite = np.isfinite(roi_grid).all(axis=1)
-                roi_grid = roi_grid[finite]
-
-                mn = (np.min(roi_grid[:,0]), np.min(roi_grid[:,1]))
-                mx = (np.max(roi_grid[:,0]), np.max(roi_grid[:,1]))
             
             X = np.linspace(mn[0], mx[0], count[0], dtype=np.int16, endpoint=False)
             Y = np.linspace(mn[1], mx[1], count[1], dtype=np.int16, endpoint=False)
             xv, yv = np.meshgrid(X, Y)
-
 
             # get rid of first row and column
             xv = xv[1:,1:]
             yv = yv[1:,1:]
 
             # at end, add offset from top, left to points:
-            for i in range(mgrid_count[0]):
-                for j in range(mgrid_count[1]):
+            for j in range(mgrid_count[1]): #row
+                for i in range(mgrid_count[0]): #column
                     distPt.append(tuple(map(sum, zip((left, top), (xv[j, i], yv[j, i])))))
 
             calc_grid = False
@@ -530,14 +501,18 @@ def update():
             cv2.putText(text_img,"Max of ROI: {}".format(roi_max), (10,30), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
             cv2.putText(text_img,"Min of ROI: {}".format(roi_min), (10,45), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
             cv2.putText(text_img,"Standard Deviation of ROI: {}".format(roi_std), (10,60), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
-            print("Mean of ROI: ", roi_mean)
-            print("Max of ROI: ", roi_max)
-            print("Min of ROI: ", roi_min)
-            print("Standard Deviation of ROI: ", roi_std)
+            if debug_print:
+                print("Mean of ROI: ", roi_mean)
+                print("Max of ROI: ", roi_max)
+                print("Min of ROI: ", roi_min)
+                print("Standard Deviation of ROI: ", roi_std)
 
         if distPt is not None:
             for pt in distPt:
                 cv2.circle(shape_img, pt, 3, (0,0,255,255), 1)
+        
+        if inspectPt is not None:
+            cv2.circle(shape_img, inspectPt, 3, (0,255,255), 1)
 
         if plane_first is not None:
             C = np.round(plane_first[1],4)
@@ -602,7 +577,7 @@ def update():
             cloud_mask = mask.flatten()
             color_mask = cloud_mask
 
-            #roi_cloud[cloud_mask] = cloud[cloud_mask]
+            #roi_cloud[cloud_mask] = cloud[cloud_mas4k]
             roi_colors[color_mask] = colors[color_mask]
 
             roi_x = np.zeros_like(x) * np.nan
@@ -652,7 +627,8 @@ def update():
 
                 # evaluate it on grid
                 Z = C[0]*Xx + C[1]*Yy + C[2]
-                print("z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4)))
+                if debug_print:
+                    print("z = {}x + {}y + {}".format(np.round(C[0],4), np.round(C[1],4), np.round(C[2],4)))
 
                 z = C[0]*X + C[1]*Y + C[2]
                 plane = (np.c_[X, Y, z], C)
@@ -662,7 +638,8 @@ def update():
 
                 # evaluate it on grid
                 Z = C[4]*Xx**2. + C[5]*Yy**2. + C[3]*Xx*Yy + C[1]*Xx + C[2]*Yy + C[0]
-                print(('z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])))
+                if debug_print:
+                    print(('z= {}x^2 + {}y^2 + {}xy {}x + {}y + {}'.format(C[4], C[5], C[3], C[1], C[2], C[0])))
 
                 z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
                 plane = (np.c_[X, Y, z], C)
@@ -694,10 +671,10 @@ def update():
                 plane_second = plane
             calc_plane = False
 
-            if distPt is not None:
+            if inspectPt is not None:
                 distance = "NaN"
                 # FIXME: find nearest cluster of points to selection
-                pt = distPt[0]
+                pt = inspectPt
                 p = cloud[pt[1]][pt[0]]
                 distance = np.round(distance_to_plane(p, plane_first),4)
                 cv2.putText(text_img,"Point Dist to Plane: {}".format(distance), (10,105), cv2.FONT_HERSHEY_SIMPLEX, .5, textcolor)
@@ -729,27 +706,40 @@ def update():
         if dump_csv:
             grid_data = list()
             grid_data.append(dt.strftime("%D"))
-            grid_data.append(dt.strftime("%T"))
-            for pt in distPt:
-                # get point in real-world coordinates
-                pt_to_world = cloud[pt[1]][pt[0]]
-                # offset from top-left
-                pt_top_left = cloud[top][left]
-                pt_out = pt_to_world - pt_top_left
-                # offset to plane (?)
-                # TODO
-                grid_data.append(pt_out)
+            grid_data.append(dt.strftime('%H:%M:%S.%f')[:-3])
+            pt_top_left = cloud[top][left]
+            pt_top_left_on_plane = point_on_plane(pt_top_left, plane_first)
+            pts = np.asarray(distPt)
+            print(pts)
+            print(pts[0])
+            print(pts.shape)
+            pts.reshape(r, c) #reshape to rows, columns
+            for row in range(r):
+                for col in range(c):
+                    pt = pts[row][col]
+                    print(pt)
+                    # get point in real-world coordinates
+                    pt_to_world = cloud[pt[1]][pt[0]]
+                    # offset to plane
+                    # We should get the point distance from the plane
+                    pt_on_plane = point_on_plane(pt_to_world, plane_first)
+                    pt_out = np.subtract(pt_on_plane, pt_top_left_on_plane)
+                    
+                    #pt_out = pt
+                    
+                    grid_data.append(pt_out)
             dump_to_csv("grid", grid_data, mode="a+")
         dump_depth_image=0
-
+	
     if dump_csv:
         raw_data = list()
         raw_data.append(dt.strftime("%D"))
-        raw_data.append(dt.strftime("%T"))
+        raw_data.append(dt.strftime('%H:%M:%S.%f')[:-3])
+        # raw_data.append(dt.strftime("%T"))
         for pt in distPt:
             p = cloud[pt[1]][pt[0]]
             distance = np.round(distance_to_plane(p, plane_first),4)
-            if distance is np.nan:
+            if distance == np.nan:
                 distance = " "
             raw_data.append(distance)
         dump_to_csv("raw", raw_data)

@@ -1,3 +1,5 @@
+# Line Plotting
+#  https://stackoverflow.com/questions/19165259/python-numpy-scipy-curve-fitting
 from .Common import *
 from .QtCV import *
 from .QtPointCloud import *

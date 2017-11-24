@@ -277,11 +277,22 @@ Install Prerequisites
 ---------------------
 
 ::
+    conda create -n py35 python=3.5 anaconda
+    source activate py35
+    conda install pyqtgraph
+    conda install pyopengl
+    conda install pyopengl-accelerate
+    ~/anaconda2/envs/py35/bin/pip install opencv-python
+    ~/anaconda2/envs/py35/bin/pip install openni
+
+::
     pip install opencv-python
     pip install openni
     pip install pyqtgraph
     pip install PyOpenGL
     conda install python-pcl
+    sudo -H pip3 install PyQt5
+    sudo apt install python3-pyqt5.qtopengl python3-pyopengl
 
 Code Setup
 ----------
